@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>fp-ts Tennis</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <main>
+      <p class="eyebrow">FP-TS PLAYGROUND</p>
+      <h1>One game of tennis</h1>
+      <section class="scoreboard" aria-live="polite">
+        <div class="player">
+          <span>Player A</span>
+          <strong id="score-a">0</strong>
+          <button data-player="a">Player A wins point</button>
+        </div>
+        <div class="divider">—</div>
+        <div class="player">
+          <span>Player B</span>
+          <strong id="score-b">0</strong>
+          <button data-player="b">Player B wins point</button>
+        </div>
+      </section>
+      <p id="status">Ready? Play!</p>
+      <button id="reset" class="secondary">Reset game</button>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

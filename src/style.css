@@ -1,0 +1,87 @@
+:root {
+	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+	color: #effff4;
+	background: #102c22;
+}
+
+* {
+	box-sizing: border-box;
+}
+body {
+	margin: 0;
+	min-height: 100vh;
+	display: grid;
+	place-items: center;
+}
+main {
+	width: min(680px, calc(100% - 32px));
+	text-align: center;
+}
+.eyebrow {
+	color: #b4db78;
+	letter-spacing: 0.15em;
+}
+h1 {
+	font-family: Georgia, serif;
+	font-size: clamp(2.4rem, 8vw, 4.8rem);
+	margin: 0.25em 0 0.7em;
+}
+.scoreboard {
+	display: grid;
+	grid-template-columns: 1fr auto 1fr;
+	gap: 20px;
+	align-items: center;
+	padding: 30px;
+	border: 1px solid #5b846e;
+	border-radius: 18px;
+	background: #173c2f;
+}
+.player {
+	display: grid;
+	gap: 14px;
+}
+.player strong {
+	font:
+		700 4rem Georgia,
+		serif;
+	color: #e9ff77;
+}
+.divider {
+	color: #5b846e;
+}
+button {
+	border: 0;
+	border-radius: 999px;
+	padding: 12px 18px;
+	font: inherit;
+	cursor: pointer;
+	background: #e9ff77;
+	color: #102c22;
+}
+button:disabled {
+	opacity: 0.35;
+	cursor: default;
+}
+.secondary {
+	background: transparent;
+	border: 1px solid #5b846e;
+	color: inherit;
+}
+#status {
+	min-height: 1.5em;
+	margin: 24px 0 14px;
+}
+
+@media (max-width: 520px) {
+	.scoreboard {
+		gap: 10px;
+		padding: 20px 12px;
+	}
+	.player strong {
+		font-size: 3rem;
+	}
+	button {
+		padding: 10px;
+		font-size: 0.8rem;
+	}
+}

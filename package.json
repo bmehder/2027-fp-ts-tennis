@@ -1,0 +1,20 @@
+{
+  "name": "fpts-tennis",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "tsc --project tsconfig.json",
+    "dev": "vite",
+    "test": "tsx --test"
+  },
+  "dependencies": {
+    "fp-ts": "^2.16.11"
+  },
+  "devDependencies": {
+    "@types/node": "^26.4.1",
+    "tsx": "^4.23.13",
+    "typescript": "^7.0.2",
+    "vite": "^8.2.2"
+  }
+}
