@@ -1,10 +1,10 @@
 export type Player = 'a' | 'b'
 
-export type Point = 0 | 1 | 2 | 3
+export type PointIndex = 0 | 1 | 2 | 3
 
 export type Game =
 	| { state: 'notStarted' }
-	| { state: 'playing'; a: Point; b: Point }
+	| { state: 'playing'; a: PointIndex; b: PointIndex }
 	| { state: 'deuce' }
 	| { state: 'advantage'; advantagedPlayer: Player }
 	| { state: 'won'; gameWinner: Player }
