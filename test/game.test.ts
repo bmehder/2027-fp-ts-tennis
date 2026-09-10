@@ -1,16 +1,15 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import * as O from 'fp-ts/Option'
-import {displayScore, initialGame, scorePoint, winner} from '../src/game.js'
-import {type Player} from '../src/types.js'
+import {displayScore, initialGame, scorePoint, type Player, winner} from '../src/game.js'
 
 const play = (points: Player[]) =>
 	points.reduce((game, player) => scorePoint(player)(game), initialGame)
 
 test('starts at love all and enters play on the first point', () => {
-	assert.deepEqual(initialGame, {state: 'notStarted'})
+	assert.equal(initialGame, 'notStarted')
 	assert.deepEqual(displayScore(initialGame), {a: '0', b: '0'})
-	assert.deepEqual(scorePoint('a')(initialGame), {state: 'playing', a: 1, b: 0})
+	assert.equal(scorePoint('a')(initialGame), 'fifteenLove')
 })
 
 test('moves through ordinary tennis scores', () => {
@@ -21,9 +20,9 @@ test('handles deuce and advantage', () => {
 	const deuce = play(['a', 'a', 'a', 'b', 'b', 'b'])
 	const advantage = scorePoint('a')(deuce)
 
-	assert.deepEqual(deuce, {state: 'deuce'})
+	assert.equal(deuce, 'deuce')
 	assert.deepEqual(displayScore(deuce), {a: '40', b: '40'})
-	assert.deepEqual(advantage, {state: 'advantage', advantagedPlayer: 'a'})
+	assert.equal(advantage, 'advantageA')
 	assert.deepEqual(displayScore(advantage), {a: 'AD', b: '40'})
 })
 
@@ -41,5 +40,5 @@ test('hides the score after both ordinary and deuce wins', () => {
 
 test('returns to deuce when the player without advantage wins the point', () => {
 	const game = play(['a', 'a', 'a', 'b', 'b', 'b', 'a', 'b'])
-	assert.deepEqual(game, {state: 'deuce'})
+	assert.equal(game, 'deuce')
 })

@@ -1,8 +1,14 @@
 import * as O from 'fp-ts/Option'
 import { pipe } from 'fp-ts/function'
-import { displayScore, gameStatus, initialGame, scorePoint, winner } from './game.js'
+import {
+	displayScore,
+	gameStatus,
+	initialGame,
+	scorePoint,
+	type Player,
+	winner,
+} from './game.js'
 import { explicit as track, fx, implicit as derive } from './slank.js'
-import { type Player } from './types.js'
 
 const elements = {
 	scoreA: document.querySelector<HTMLElement>('#score-a')!,
