@@ -1,8 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import * as O from 'fp-ts/Option'
 import { type Player } from '../src/player.js'
-import { initialMatch, scorePoint, winner } from '../src/match.js'
+import { initialMatch, scorePoint, type Match } from '../src/match.js'
 
 const play = (points: Player[]) =>
 	points.reduce(
@@ -14,7 +13,8 @@ test('wins a best-of-three match after two sets', () => {
 	const points = Array<Player>(48).fill('a')
 	const tennisMatch = play(points)
 
-	assert.equal(O.toUndefined(winner(tennisMatch)), 'a')
+	assert.ok(tennisMatch.state === 'won')
+	assert.equal(tennisMatch.matchWinner, 'a')
 	assert.deepEqual(tennisMatch.completedSets, [
 		{ kind: 'regular', score: { a: 6, b: 0 } },
 		{ kind: 'regular', score: { a: 6, b: 0 } },
@@ -26,14 +26,15 @@ test('plays a third set when the players split the first two', () => {
 	const setWonByB = Array<Player>(24).fill('b')
 	const afterTwoSets = play([...setWonByA, ...setWonByB])
 
-	assert.ok(O.isNone(winner(afterTwoSets)))
+	assert.equal(afterTwoSets.state, 'playing')
 
-	const tennisMatch = [...setWonByA].reduce(
+	const tennisMatch = [...setWonByA].reduce<Match>(
 		(currentMatch, player) => scorePoint(player)(currentMatch),
 		afterTwoSets,
 	)
 
-	assert.equal(O.toUndefined(winner(tennisMatch)), 'a')
+	assert.ok(tennisMatch.state === 'won')
+	assert.equal(tennisMatch.matchWinner, 'a')
 	assert.deepEqual(tennisMatch.completedSets, [
 		{ kind: 'regular', score: { a: 6, b: 0 } },
 		{ kind: 'regular', score: { a: 0, b: 6 } },

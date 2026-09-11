@@ -41,7 +41,7 @@ A tennis game has a small, finite set of meaningful states. Instead of storing t
 
 ```ts
 export type Game =
-	| 'notStarted'
+	| 'loveLove'
 	| 'loveFifteen'
 	| 'fifteenLove'
 	| 'loveThirty'
@@ -89,7 +89,7 @@ type GameTransitions = Readonly<
 >
 
 const transitions = {
-	notStarted: {
+	loveLove: {
 		a: 'fifteenLove',
 		b: 'loveFifteen',
 	},

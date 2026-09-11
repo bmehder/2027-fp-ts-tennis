@@ -123,9 +123,8 @@ button:disabled {
 	color: inherit;
 }
 
-#status {
-	min-height: 1.5em;
-	margin: 24px 0 14px;
+#reset {
+	margin-block-start: 2rem;
 }
 
 .app-state {

@@ -1,4 +1,4 @@
-export type Signal<Value> = {
+type Signal<Value> = {
 	value: Value
 }
 

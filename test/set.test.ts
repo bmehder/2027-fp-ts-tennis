@@ -1,8 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import * as O from 'fp-ts/Option'
 import { type Player } from '../src/player.js'
-import { initialSet, score, scorePoint, winner } from '../src/set.js'
+import { initialSet, score, scorePoint } from '../src/set.js'
 
 const gameWonBy = (player: Player): Player[] => [player, player, player, player]
 
@@ -12,7 +11,8 @@ const play = (points: Player[]) =>
 test('wins a set at six games with a two-game lead', () => {
 	const set = play(Array.from({ length: 6 }, () => gameWonBy('a')).flat())
 
-	assert.equal(O.toUndefined(winner(set)), 'a')
+	assert.ok(set.state === 'won')
+	assert.equal(set.setWinner, 'a')
 	assert.deepEqual(score(set), { a: 6, b: 0 })
 })
 
@@ -36,14 +36,12 @@ test('plays a tiebreak at six games all', () => {
 	]
 	const set = play([...games, ...tiebreakPoints])
 
-	assert.equal(O.toUndefined(winner(set)), 'a')
+	assert.ok(set.state === 'won')
+	assert.equal(set.setWinner, 'a')
 	assert.deepEqual(score(set), { a: 7, b: 6 })
-	assert.deepEqual(
-		set.state === 'won' ? set.result : undefined,
-		{
-			kind: 'tiebreak',
-			score: { a: 7, b: 6 },
-			tiebreakLoserScore: 5,
-		},
-	)
+	assert.deepEqual(set.result, {
+		kind: 'tiebreak',
+		score: { a: 7, b: 6 },
+		tiebreakLoserScore: 5,
+	})
 })

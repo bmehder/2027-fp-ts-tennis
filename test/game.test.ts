@@ -8,7 +8,7 @@ const play = (points: Player[]) =>
 	points.reduce((game, player) => scorePoint(player)(game), initialGame)
 
 test('starts at love all and enters play on the first point', () => {
-	assert.equal(initialGame, 'notStarted')
+	assert.equal(initialGame, 'loveLove')
 	assert.deepEqual(displayScore(initialGame), { a: '0', b: '0' })
 	assert.equal(scorePoint('a')(initialGame), 'fifteenLove')
 })

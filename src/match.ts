@@ -1,4 +1,3 @@
-import * as O from 'fp-ts/Option'
 import { match, P } from 'ts-pattern'
 import { type Player } from './player.js'
 import {
@@ -107,13 +106,3 @@ export const scorePoint =
 				return tennisMatch
 		}
 	}
-
-// Queries
-export const winner = (tennisMatch: Match): O.Option<Player> => {
-	switch (tennisMatch.state) {
-		case 'playing':
-			return O.none
-		case 'won':
-			return O.some(tennisMatch.matchWinner)
-	}
-}

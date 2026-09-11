@@ -3,7 +3,7 @@ import { type Player } from './player.js'
 
 // Types
 export type Game =
-	| 'notStarted'
+	| 'loveLove'
 	| 'loveFifteen'
 	| 'fifteenLove'
 	| 'loveThirty'
@@ -24,7 +24,7 @@ export type Game =
 	| 'wonA'
 	| 'wonB'
 
-export type GameScore = Readonly<{
+type GameScore = Readonly<{
 	a: string
 	b: string
 }>
@@ -35,7 +35,7 @@ type GameTransitions = Readonly<
 
 // State transitions
 const transitions = {
-	notStarted: { a: 'fifteenLove', b: 'loveFifteen' },
+	loveLove: { a: 'fifteenLove', b: 'loveFifteen' },
 	loveFifteen: { a: 'fifteenFifteen', b: 'loveThirty' },
 	fifteenLove: { a: 'thirtyLove', b: 'fifteenFifteen' },
 	loveThirty: { a: 'fifteenThirty', b: 'loveForty' },
@@ -59,7 +59,7 @@ const transitions = {
 
 // Display scores
 const displayScores = {
-	notStarted: { a: '0', b: '0' },
+	loveLove: { a: '0', b: '0' },
 	loveFifteen: { a: '0', b: '15' },
 	fifteenLove: { a: '15', b: '0' },
 	loveThirty: { a: '0', b: '30' },
@@ -82,7 +82,7 @@ const displayScores = {
 } as const satisfies Readonly<Record<Game, GameScore>>
 
 // Initial state
-export const initialGame: Game = 'notStarted'
+export const initialGame: Game = 'loveLove'
 
 // State transition
 export const scorePoint =
@@ -103,22 +103,3 @@ export const winner = (game: Game): O.Option<Player> => {
 }
 
 export const displayScore = (game: Game): GameScore => displayScores[game]
-
-export const gameStatus = (game: Game): string => {
-	switch (game) {
-		case 'notStarted':
-			return 'Ready? Play.'
-		case 'deuce':
-			return 'Deuce'
-		case 'advantageA':
-			return 'Advantage Player A'
-		case 'advantageB':
-			return 'Advantage Player B'
-		case 'wonA':
-			return 'Game, Player A!'
-		case 'wonB':
-			return 'Game, Player B!'
-		default:
-			return 'Game in progress'
-	}
-}

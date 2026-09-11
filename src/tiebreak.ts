@@ -1,8 +1,7 @@
-import * as O from 'fp-ts/Option'
 import { opponent, type Player } from './player.js'
 
 // Types
-export type TiebreakScore = Readonly<{
+type TiebreakScore = Readonly<{
 	a: number
 	b: number
 }>
@@ -49,15 +48,3 @@ export const scorePoint =
 				return tiebreak
 		}
 	}
-
-// Queries and projections
-export const winner = (tiebreak: Tiebreak): O.Option<Player> => {
-	switch (tiebreak.state) {
-		case 'won':
-			return O.some(tiebreak.tiebreakWinner)
-		case 'playing':
-			return O.none
-	}
-}
-
-export const score = (tiebreak: Tiebreak): TiebreakScore => tiebreak.score

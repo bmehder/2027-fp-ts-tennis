@@ -235,16 +235,6 @@ export const scorePoint =
 	}
 
 // Queries and projections
-export const winner = (set: Set): O.Option<Player> => {
-	switch (set.state) {
-		case 'won':
-			return O.some(set.setWinner)
-		case 'playing':
-		case 'tiebreak':
-			return O.none
-	}
-}
-
 export const score = (set: Set): SetScore => {
 	switch (set.state) {
 		case 'playing':
