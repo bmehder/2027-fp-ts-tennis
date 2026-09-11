@@ -9,22 +9,46 @@
   <body>
     <main>
       <p class="eyebrow">FP-TS PLAYGROUND</p>
-      <h1>One game of tennis</h1>
-      <section class="scoreboard" aria-live="polite">
-        <div class="player">
-          <span>Player A</span>
-          <strong id="score-a">0</strong>
-          <button data-player="a">Player A wins point</button>
+      <h1>Best of three</h1>
+      <p class="rules">Advantage scoring · Tiebreak at six games all</p>
+      <p class="article-link">
+        <a
+          href="https://github.com/bmehder/2027-fp-ts-tennis/blob/main/enumerated-state-machines.md"
+        >Read about how this app is modeled</a>
+      </p>
+      <section class="scoreboard" aria-live="polite" aria-label="Match score">
+        <div class="score-row headings" aria-hidden="true">
+          <span>Player</span>
+          <span>Set 1</span>
+          <span>Set 2</span>
+          <span>Set 3</span>
+          <span>Points</span>
         </div>
-        <div class="divider">—</div>
-        <div class="player">
-          <span>Player B</span>
-          <strong id="score-b">0</strong>
+        <div class="score-row">
+          <strong>Player A</strong>
+          <span data-set-player="a">0</span>
+          <span data-set-player="a"></span>
+          <span data-set-player="a"></span>
+          <strong id="points-a" class="points">0</strong>
+        </div>
+        <div class="score-row">
+          <strong>Player B</strong>
+          <span data-set-player="b">0</span>
+          <span data-set-player="b"></span>
+          <span data-set-player="b"></span>
+          <strong id="points-b" class="points">0</strong>
+        </div>
+        <div class="controls">
+          <button data-player="a">Player A wins point</button>
           <button data-player="b">Player B wins point</button>
         </div>
       </section>
-      <p id="status">Ready? Play!</p>
-      <button id="reset" class="secondary">Reset Game</button>
+      <p id="status">Ready? Play.</p>
+      <button id="reset" class="secondary">Reset Match</button>
+      <details class="app-state">
+        <summary>App state</summary>
+        <pre id="app-state"></pre>
+      </details>
     </main>
     <script type="module" src="/src/main.ts"></script>
   </body>

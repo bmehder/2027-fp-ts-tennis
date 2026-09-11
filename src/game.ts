@@ -1,8 +1,7 @@
 import * as O from 'fp-ts/Option'
+import { type Player } from './player.js'
 
 // Types
-export type Player = 'a' | 'b'
-
 export type Game =
 	| 'notStarted'
 	| 'loveFifteen'
@@ -25,15 +24,17 @@ export type Game =
 	| 'wonA'
 	| 'wonB'
 
-export type Score = {
+export type GameScore = Readonly<{
 	a: string
 	b: string
-}
+}>
 
-type Transitions = Record<Game, Record<Player, Game>>
+type GameTransitions = Readonly<
+	Record<Game, Readonly<Record<Player, Game>>>
+>
 
 // State transitions
-const transitions: Transitions = {
+const transitions = {
 	notStarted: { a: 'fifteenLove', b: 'loveFifteen' },
 	loveFifteen: { a: 'fifteenFifteen', b: 'loveThirty' },
 	fifteenLove: { a: 'thirtyLove', b: 'fifteenFifteen' },
@@ -54,10 +55,10 @@ const transitions: Transitions = {
 	advantageB: { a: 'deuce', b: 'wonB' },
 	wonA: { a: 'wonA', b: 'wonA' },
 	wonB: { a: 'wonB', b: 'wonB' },
-}
+} as const satisfies GameTransitions
 
 // Display scores
-const scores: Record<Game, Score> = {
+const displayScores = {
 	notStarted: { a: '0', b: '0' },
 	loveFifteen: { a: '0', b: '15' },
 	fifteenLove: { a: '15', b: '0' },
@@ -78,12 +79,12 @@ const scores: Record<Game, Score> = {
 	advantageB: { a: '40', b: 'AD' },
 	wonA: { a: '', b: '' },
 	wonB: { a: '', b: '' },
-} 
+} as const satisfies Readonly<Record<Game, GameScore>>
 
 // Initial state
 export const initialGame: Game = 'notStarted'
 
-// Public state transition
+// State transition
 export const scorePoint =
 	(pointWinner: Player) =>
 	(game: Game): Game =>
@@ -101,7 +102,7 @@ export const winner = (game: Game): O.Option<Player> => {
 	}
 }
 
-export const displayScore = (game: Game): Score => scores[game]
+export const displayScore = (game: Game): GameScore => displayScores[game]
 
 export const gameStatus = (game: Game): string => {
 	switch (game) {

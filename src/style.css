@@ -7,49 +7,96 @@
 * {
 	box-sizing: border-box;
 }
+
 body {
 	margin: 0;
 	min-height: 100vh;
 	display: grid;
 	place-items: center;
 }
+
 main {
-	width: min(680px, calc(100% - 32px));
+	width: min(42rem, calc(100% - 32px));
+	padding: 40px 0;
 	text-align: center;
 }
+
 .eyebrow {
 	color: #b4db78;
 	letter-spacing: 0.15em;
 }
+
 h1 {
 	font-family: Georgia, serif;
 	font-size: clamp(2.4rem, 8vw, 4.8rem);
-	margin: 0.25em 0 0.7em;
+	margin: 0.25em 0 0.15em;
 }
+
+.rules {
+	margin: 0;
+	color: #9fc1ad;
+}
+
+.article-link {
+	margin: 8px 0 30px;
+}
+
+.article-link a {
+	color: #b4db78;
+}
+
 .scoreboard {
-	display: grid;
-	grid-template-columns: 1fr auto 1fr;
-	gap: 20px;
-	align-items: center;
-	padding: 30px;
+	overflow: hidden;
 	border: 1px solid #5b846e;
 	border-radius: 18px;
 	background: #173c2f;
 }
-.player {
+
+.score-row {
 	display: grid;
-	gap: 14px;
+	grid-template-columns: minmax(120px, 1.6fr) repeat(4, minmax(64px, 1fr));
+	align-items: center;
+	min-width: 540px;
+	border-bottom: 1px solid #315947;
 }
-.player strong {
+
+.score-row > * {
+	padding: 18px 10px;
+}
+
+.score-row > :first-child {
+	padding-left: 24px;
+	text-align: left;
+}
+
+.score-row > :last-child {
+	background: #204b3c;
+}
+
+.headings {
+	font-size: 0.72rem;
+	color: #9fc1ad;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+}
+
+.points {
 	font:
-		700 4rem Georgia,
+		700 1.8rem Georgia,
 		serif;
 	color: #e9ff77;
 }
-.divider {
-	color: #5b846e;
+
+.controls {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: 1.5rem;
+	padding: 20px;
 }
+
 button {
+	max-width: 15rem;
 	border: 0;
 	border-radius: 999px;
 	padding: 12px 18px;
@@ -58,30 +105,55 @@ button {
 	background: #e9ff77;
 	color: #102c22;
 }
+
 button:disabled {
 	opacity: 0.35;
 	cursor: default;
 }
+
 .secondary {
 	background: transparent;
 	border: 1px solid #5b846e;
 	color: inherit;
 }
+
 #status {
 	min-height: 1.5em;
 	margin: 24px 0 14px;
 }
 
-@media (max-width: 520px) {
+.app-state {
+	margin: 24px auto 0;
+	max-width: 680px;
+	text-align: left;
+}
+
+.app-state summary {
+	width: max-content;
+	margin: 0 auto;
+	cursor: pointer;
+	color: #9fc1ad;
+}
+
+.app-state pre {
+	overflow-x: auto;
+	margin: 14px 0 0;
+	padding: 18px;
+	border: 1px solid #315947;
+	border-radius: 12px;
+	background: #0b2119;
+	color: #b4db78;
+	font: inherit;
+	font-size: 0.82rem;
+	line-height: 1.5;
+}
+
+@media (max-width: 680px) {
 	.scoreboard {
-		gap: 10px;
-		padding: 20px 12px;
+		overflow-x: auto;
 	}
-	.player strong {
-		font-size: 3rem;
-	}
-	button {
-		padding: 10px;
-		font-size: 0.8rem;
+
+	.controls {
+		min-width: 540px;
 	}
 }

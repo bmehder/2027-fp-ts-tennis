@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {explicit, fx, implicit} from '../src/slank.js'
+import { explicit, fx, implicit } from '../src/slank.js'
 
 test('recomputes derived signals and effects', () => {
 	const count = explicit(1)
