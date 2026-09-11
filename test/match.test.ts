@@ -16,8 +16,8 @@ test('wins a best-of-three match after two sets', () => {
 
 	assert.equal(O.toUndefined(winner(tennisMatch)), 'a')
 	assert.deepEqual(tennisMatch.completedSets, [
-		{ a: 6, b: 0 },
-		{ a: 6, b: 0 },
+		{ kind: 'regular', score: { a: 6, b: 0 } },
+		{ kind: 'regular', score: { a: 6, b: 0 } },
 	])
 })
 
@@ -35,8 +35,8 @@ test('plays a third set when the players split the first two', () => {
 
 	assert.equal(O.toUndefined(winner(tennisMatch)), 'a')
 	assert.deepEqual(tennisMatch.completedSets, [
-		{ a: 6, b: 0 },
-		{ a: 0, b: 6 },
-		{ a: 6, b: 0 },
+		{ kind: 'regular', score: { a: 6, b: 0 } },
+		{ kind: 'regular', score: { a: 0, b: 6 } },
+		{ kind: 'regular', score: { a: 6, b: 0 } },
 	])
 })

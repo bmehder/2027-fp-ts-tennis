@@ -73,6 +73,12 @@ h1 {
 	background: #204b3c;
 }
 
+.score-row sup {
+	margin-left: 0.12em;
+	font-size: 0.6em;
+	vertical-align: super;
+}
+
 .headings {
 	font-size: 0.72rem;
 	color: #9fc1ad;

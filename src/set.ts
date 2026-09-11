@@ -11,7 +11,6 @@ import {
 	initialTiebreak,
 	scorePoint as scoreTiebreakPoint,
 	type Tiebreak,
-	winner as tiebreakWinner,
 } from './tiebreak.js'
 
 // Types
@@ -62,10 +61,18 @@ export type SetScore = Readonly<{
 	b: SetScoreValue
 }>
 
+export type SetResult =
+	| { kind: 'regular'; score: SetScore }
+	| {
+			kind: 'tiebreak'
+			score: Readonly<{ a: 7; b: 6 } | { a: 6; b: 7 }>
+			tiebreakLoserScore: number
+	  }
+
 export type Set =
 	| { state: 'playing'; games: SetGameScore; game: Game }
 	| { state: 'tiebreak'; tiebreak: Tiebreak }
-	| { state: 'won'; setWinner: Player; score: SetScore }
+	| { state: 'won'; setWinner: Player; result: SetResult }
 
 type SetTransitions = Readonly<
 	Record<SetGameScore, Readonly<Record<Player, Set>>>
@@ -86,7 +93,27 @@ const tiebreak = (): Set => ({
 const won = (setWinner: Player, a: SetScoreValue, b: SetScoreValue): Set => ({
 	state: 'won',
 	setWinner,
-	score: { a, b },
+	result: { kind: 'regular', score: { a, b } },
+})
+
+const wonInTiebreak = (
+	setWinner: Player,
+	tiebreak: Extract<Tiebreak, { state: 'won' }>,
+): Set => ({
+	state: 'won',
+	setWinner,
+	result:
+		setWinner === 'a'
+			? {
+					kind: 'tiebreak',
+					score: { a: 7, b: 6 },
+					tiebreakLoserScore: tiebreak.score.b,
+				}
+			: {
+					kind: 'tiebreak',
+					score: { a: 6, b: 7 },
+					tiebreakLoserScore: tiebreak.score.a,
+				},
 })
 
 // Set transitions after a completed game
@@ -195,16 +222,12 @@ export const scorePoint =
 			case 'tiebreak': {
 				const tiebreak = scoreTiebreakPoint(pointWinner)(set.tiebreak)
 
-				return pipe(
-					tiebreakWinner(tiebreak),
-					O.match(
-						() => ({ ...set, tiebreak }),
-						winner =>
-							winner === 'a'
-								? won('a', 7, 6)
-								: won('b', 6, 7),
-					),
-				)
+				switch (tiebreak.state) {
+					case 'playing':
+						return { ...set, tiebreak }
+					case 'won':
+						return wonInTiebreak(tiebreak.tiebreakWinner, tiebreak)
+				}
 			}
 			case 'won':
 				return set
@@ -229,6 +252,6 @@ export const score = (set: Set): SetScore => {
 		case 'tiebreak':
 			return { a: 6, b: 6 }
 		case 'won':
-			return set.score
+			return set.result.score
 	}
 }

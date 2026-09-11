@@ -20,8 +20,30 @@ test('plays a tiebreak at six games all', () => {
 	const games = Array.from({ length: 12 }, (_, index) =>
 		gameWonBy(index % 2 === 0 ? 'a' : 'b'),
 	).flat()
-	const set = play([...games, ...Array<Player>(7).fill('a')])
+	const tiebreakPoints: Player[] = [
+		'a',
+		'b',
+		'a',
+		'b',
+		'a',
+		'b',
+		'a',
+		'b',
+		'a',
+		'b',
+		'a',
+		'a',
+	]
+	const set = play([...games, ...tiebreakPoints])
 
 	assert.equal(O.toUndefined(winner(set)), 'a')
 	assert.deepEqual(score(set), { a: 7, b: 6 })
+	assert.deepEqual(
+		set.state === 'won' ? set.result : undefined,
+		{
+			kind: 'tiebreak',
+			score: { a: 7, b: 6 },
+			tiebreakLoserScore: 5,
+		},
+	)
 })

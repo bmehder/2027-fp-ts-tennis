@@ -2,7 +2,7 @@ import { match } from 'ts-pattern'
 import { displayScore, gameStatus } from './game.js'
 import { initialMatch, scorePoint, type Match } from './match.js'
 import { type Player } from './player.js'
-import { score as setScore } from './set.js'
+import { score as setScore, type SetResult, type SetScore } from './set.js'
 import { explicit as track, fx, implicit as derive } from './slank.js'
 
 const elements = {
@@ -18,6 +18,13 @@ const elements = {
 
 const tennisMatch = track(initialMatch)
 
+type DisplaySet = SetResult | { kind: 'inProgress'; score: SetScore }
+
+const inProgress = (score: SetScore): DisplaySet => ({
+	kind: 'inProgress',
+	score,
+})
+
 const matchView = (tennisMatch: Match) =>
 	match(tennisMatch)
 		.with({ state: 'won' }, ({ completedSets, matchWinner }) => ({
@@ -29,7 +36,7 @@ const matchView = (tennisMatch: Match) =>
 		.with(
 			{ state: 'playing', set: { state: 'tiebreak' } },
 			({ completedSets, set }) => ({
-				sets: [...completedSets, setScore(set)],
+				sets: [...completedSets, inProgress(setScore(set))],
 				points: set.tiebreak.score,
 				status: 'Tiebreak',
 				isMatchOver: false,
@@ -38,7 +45,7 @@ const matchView = (tennisMatch: Match) =>
 		.with(
 			{ state: 'playing', set: { state: 'won' } },
 			({ completedSets, set }) => ({
-				sets: [...completedSets, setScore(set)],
+				sets: [...completedSets, inProgress(setScore(set))],
 				points: { a: '', b: '' },
 				status: `Set, Player ${set.setWinner.toUpperCase()}!`,
 				isMatchOver: false,
@@ -47,7 +54,7 @@ const matchView = (tennisMatch: Match) =>
 		.with(
 			{ state: 'playing', set: { state: 'playing' } },
 			({ completedSets, set }) => ({
-				sets: [...completedSets, setScore(set)],
+				sets: [...completedSets, inProgress(setScore(set))],
 				points: displayScore(set.game),
 				status: gameStatus(set.game),
 				isMatchOver: false,
@@ -57,12 +64,28 @@ const matchView = (tennisMatch: Match) =>
 
 const view = derive(() => matchView(tennisMatch.value))
 
+const displaySetScore = (
+	element: HTMLElement,
+	set: DisplaySet | undefined,
+	player: Player,
+) => {
+	if (!set) return element.replaceChildren()
+
+	element.replaceChildren(set.score[player].toString())
+
+	if (set.kind === 'tiebreak' && set.score[player] === 6) {
+		const tiebreakScore = document.createElement('sup')
+		tiebreakScore.textContent = set.tiebreakLoserScore.toString()
+		element.append(tiebreakScore)
+	}
+}
+
 fx(() => {
 	elements.setScoresA.forEach((element, index) => {
-		element.textContent = view.value.sets[index]?.a.toString() ?? ''
+		displaySetScore(element, view.value.sets[index], 'a')
 	})
 	elements.setScoresB.forEach((element, index) => {
-		element.textContent = view.value.sets[index]?.b.toString() ?? ''
+		displaySetScore(element, view.value.sets[index], 'b')
 	})
 	elements.pointsA.textContent = view.value.points.a.toString()
 	elements.pointsB.textContent = view.value.points.b.toString()

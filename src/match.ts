@@ -5,7 +5,7 @@ import {
 	initialSet,
 	scorePoint as scoreSetPoint,
 	type Set,
-	type SetScore,
+	type SetResult,
 } from './set.js'
 
 // Types
@@ -15,13 +15,13 @@ export type Match =
 	| {
 			state: 'playing'
 			score: MatchScore
-			completedSets: readonly SetScore[]
+			completedSets: readonly SetResult[]
 			set: Set
 	  }
 	| {
 			state: 'won'
 			matchWinner: Player
-			completedSets: readonly SetScore[]
+			completedSets: readonly SetResult[]
 	  }
 
 type MatchTransition =
@@ -57,7 +57,7 @@ type PlayingMatch = Extract<Match, { state: 'playing' }>
 type WonSet = Extract<Set, { state: 'won' }>
 
 const completeSet = (tennisMatch: PlayingMatch, set: WonSet): Match => {
-	const completedSets = [...tennisMatch.completedSets, set.score]
+	const completedSets = [...tennisMatch.completedSets, set.result]
 
 	return match(transitions[tennisMatch.score][set.setWinner])
 		.returnType<Match>()

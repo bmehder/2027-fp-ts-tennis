@@ -27,13 +27,13 @@ const scorePoint =
 	}
 ```
 
-This is still a pure function. The issue is not the presence of an `if`, a ternary, or any other particular control-flow construct. The issue is that understanding the result requires following a procedure: calculate `nextPoints`, use it to calculate two scores, use those scores to calculate two facts, and then combine those facts to choose the result.
+This is still a pure function. The issue is that understanding the result requires following a procedure: calculate `nextPoints`, use it to calculate two scores, use those scores to calculate two facts, and then combine those facts to choose the result.
 
 That mental execution is manageable here, but it becomes harder as an algorithm accumulates more temporary values and dependencies between them. Changing the rules also means reasoning about how a new condition interacts with the existing calculation. The code may be concise, yet much of its behavior remains implicit in the procedure.
 
 When the input domain is finite, we can sometimes avoid that procedure and write down the map itself.
 
-The result is more verbose than an arithmetic implementation, but it is also unusually direct: the source code is a readable description of the scoring rules.
+The result can be more verbose than an arithmetic implementation, but it is also unusually direct: the source code is a readable description of the scoring rules.
 
 ## Enumerate the valid states
 
@@ -63,7 +63,7 @@ export type Game =
 	| 'wonB'
 ```
 
-This type is not merely a list of labels. It defines the complete state space of the game. Values such as `fortyForty`, `advantageAWithThirty`, or `playerAHasFivePoints` cannot be constructed because they are not game states.
+This type is not merely a list of labels. It defines the complete state space of the game. Values such as `fortyFifty`, `advantageAWithThirty`, or `playerAHasFivePoints` cannot be constructed because they are not game states.
 
 The type [makes invalid states unrepresentable](https://youtu.be/IcgmSRJHu_8?si=gu3SwM4HSEbitjqr).
 
@@ -123,7 +123,7 @@ There is no scoring algorithm to simulate mentally. The transition table is the 
 
 > With an algorithmic implementation, understanding the result often means executing the code in your head: track the intermediate values, follow their dependencies, and determine which result they produce.
 
-Whether the final choice uses an `if`, a switch, a match, or a ternary is secondary. The table is declarative. To learn what happens when Player A wins at `thirtyForty`, find that row and read `a: 'deuce'`. The code states the fact directly.
+To learn what happens when Player A wins at `thirtyForty`, find that row and read `a: 'deuce'`. The code states the fact directly.
 
 This distinction matters more than line count. The table may contain more text than an arithmetic algorithm, but it asks less of its reader. A rule change becomes a change to the affected mappings rather than another condition woven into a calculation. A new state becomes a new required table entry, and TypeScript identifies every total mapping that must account for it.
 
