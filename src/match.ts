@@ -1,4 +1,4 @@
-import { match, P } from 'ts-pattern'
+import { match } from 'ts-pattern'
 import { type Player } from './player.js'
 import {
 	initialSet,
@@ -10,22 +10,24 @@ import {
 // Types
 type MatchScore = 'loveLove' | 'oneLove' | 'loveOne' | 'oneOne'
 
-export type Match =
-	| {
-			state: 'playing'
-			score: MatchScore
-			completedSets: readonly SetResult[]
-			set: Set
-	  }
-	| {
-			state: 'won'
-			matchWinner: Player
-			completedSets: readonly SetResult[]
-	  }
+type InProgressMatch = {
+	state: 'inProgress'
+	score: MatchScore
+	completedSets: readonly SetResult[]
+	set: Set
+}
+
+type CompletedMatch = {
+	state: 'completed'
+	matchWinner: Player
+	completedSets: readonly SetResult[]
+}
+
+export type Match = InProgressMatch | CompletedMatch
 
 type MatchTransition =
-	| { state: 'playing'; score: MatchScore }
-	| { state: 'won'; matchWinner: Player }
+	| { outcome: 'matchContinues'; score: MatchScore }
+	| { outcome: 'matchWon'; matchWinner: Player }
 
 type MatchTransitions = Readonly<
 	Record<MatchScore, Readonly<Record<Player, MatchTransition>>>
@@ -34,54 +36,57 @@ type MatchTransitions = Readonly<
 // Match transitions after a completed set
 const transitions = {
 	loveLove: {
-		a: { state: 'playing', score: 'oneLove' },
-		b: { state: 'playing', score: 'loveOne' },
+		a: { outcome: 'matchContinues', score: 'oneLove' },
+		b: { outcome: 'matchContinues', score: 'loveOne' },
 	},
 	oneLove: {
-		a: { state: 'won', matchWinner: 'a' },
-		b: { state: 'playing', score: 'oneOne' },
+		a: { outcome: 'matchWon', matchWinner: 'a' },
+		b: { outcome: 'matchContinues', score: 'oneOne' },
 	},
 	loveOne: {
-		a: { state: 'playing', score: 'oneOne' },
-		b: { state: 'won', matchWinner: 'b' },
+		a: { outcome: 'matchContinues', score: 'oneOne' },
+		b: { outcome: 'matchWon', matchWinner: 'b' },
 	},
 	oneOne: {
-		a: { state: 'won', matchWinner: 'a' },
-		b: { state: 'won', matchWinner: 'b' },
+		a: { outcome: 'matchWon', matchWinner: 'a' },
+		b: { outcome: 'matchWon', matchWinner: 'b' },
 	},
 } as const satisfies MatchTransitions
 
-// Helper types and functions
-type PlayingMatch = Extract<Match, { state: 'playing' }>
-type WonSet = Extract<Set, { state: 'won' }>
+// Helper functions
+const completeSet = (
+	tennisMatch: InProgressMatch,
+	setWinner: Player,
+	result: SetResult,
+): Match => {
+	const completedSets = [...tennisMatch.completedSets, result]
 
-const completeSet = (tennisMatch: PlayingMatch, set: WonSet): Match => {
-	const completedSets = [...tennisMatch.completedSets, set.result]
-
-	return match(transitions[tennisMatch.score][set.setWinner])
+	return match(transitions[tennisMatch.score][setWinner])
 		.returnType<Match>()
-		.with({ state: 'playing' }, ({ score }) => ({
-			state: 'playing',
+		.with({ outcome: 'matchContinues' }, ({ score }) => ({
+			state: 'inProgress',
 			score,
 			completedSets,
 			set: initialSet,
 		}))
-		.with({ state: 'won' }, ({ matchWinner }) => ({
-			state: 'won',
+		.with({ outcome: 'matchWon' }, ({ matchWinner }) => ({
+			state: 'completed',
 			matchWinner,
 			completedSets,
 		}))
 		.exhaustive()
 }
 
-const scorePlayingMatch = (
-	tennisMatch: PlayingMatch,
+const scoreInProgressMatch = (
+	tennisMatch: InProgressMatch,
 	pointWinner: Player,
 ): Match =>
 	match(scoreSetPoint(pointWinner)(tennisMatch.set))
 		.returnType<Match>()
-		.with({ state: 'won' }, set => completeSet(tennisMatch, set))
-		.with({ state: P.union('playing', 'tiebreak') }, set => ({
+		.with({ outcome: 'setWon' }, ({ setWinner, result }) =>
+			completeSet(tennisMatch, setWinner, result),
+		)
+		.with({ outcome: 'setContinues' }, ({ set }) => ({
 			...tennisMatch,
 			set,
 		}))
@@ -89,7 +94,7 @@ const scorePlayingMatch = (
 
 // Initial state
 export const initialMatch: Match = {
-	state: 'playing',
+	state: 'inProgress',
 	score: 'loveLove',
 	completedSets: [],
 	set: initialSet,
@@ -100,9 +105,9 @@ export const scorePoint =
 	(pointWinner: Player) =>
 	(tennisMatch: Match): Match => {
 		switch (tennisMatch.state) {
-			case 'playing':
-				return scorePlayingMatch(tennisMatch, pointWinner)
-			case 'won':
+			case 'inProgress':
+				return scoreInProgressMatch(tennisMatch, pointWinner)
+			case 'completed':
 				return tennisMatch
 		}
 	}

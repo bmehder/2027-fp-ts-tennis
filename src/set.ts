@@ -1,16 +1,15 @@
-import * as O from 'fp-ts/Option'
-import { pipe } from 'fp-ts/function'
+import { match } from 'ts-pattern'
 import {
 	initialGame,
 	scorePoint as scoreGamePoint,
 	type Game,
-	winner as gameWinner,
 } from './game.js'
 import { type Player } from './player.js'
 import {
 	initialTiebreak,
 	scorePoint as scoreTiebreakPoint,
 	type Tiebreak,
+	type TiebreakWin,
 } from './tiebreak.js'
 
 // Types
@@ -62,25 +61,28 @@ export type SetScore = Readonly<{
 }>
 
 export type SetResult =
-	| { kind: 'regular'; score: SetScore }
+	| { kind: 'decidedByGames'; score: SetScore }
 	| {
-			kind: 'tiebreak'
+			kind: 'decidedByTiebreak'
 			score: Readonly<{ a: 7; b: 6 } | { a: 6; b: 7 }>
 			tiebreakLoserScore: number
 	  }
 
 export type Set =
-	| { state: 'playing'; games: SetGameScore; game: Game }
+	| { state: 'regularGame'; games: SetGameScore; game: Game }
 	| { state: 'tiebreak'; tiebreak: Tiebreak }
-	| { state: 'won'; setWinner: Player; result: SetResult }
+
+export type SetTransition =
+	| { outcome: 'setContinues'; set: Set }
+	| { outcome: 'setWon'; setWinner: Player; result: SetResult }
 
 type SetTransitions = Readonly<
-	Record<SetGameScore, Readonly<Record<Player, Set>>>
+	Record<SetGameScore, Readonly<Record<Player, SetTransition>>>
 >
 
 // Helper functions
-const playing = (games: SetGameScore): Set => ({
-	state: 'playing',
+const regularGame = (games: SetGameScore): Set => ({
+	state: 'regularGame',
 	games,
 	game: initialGame,
 })
@@ -90,72 +92,84 @@ const tiebreak = (): Set => ({
 	tiebreak: initialTiebreak,
 })
 
-const won = (setWinner: Player, a: SetScoreValue, b: SetScoreValue): Set => ({
-	state: 'won',
-	setWinner,
-	result: { kind: 'regular', score: { a, b } },
+const continues = (set: Set): SetTransition => ({
+	outcome: 'setContinues',
+	set,
 })
 
-const wonInTiebreak = (
+const won = (
 	setWinner: Player,
-	tiebreak: Extract<Tiebreak, { state: 'won' }>,
-): Set => ({
-	state: 'won',
+	a: SetScoreValue,
+	b: SetScoreValue,
+): SetTransition => ({
+	outcome: 'setWon',
 	setWinner,
-	result:
-		setWinner === 'a'
-			? {
-					kind: 'tiebreak',
-					score: { a: 7, b: 6 },
-					tiebreakLoserScore: tiebreak.score.b,
-				}
-			: {
-					kind: 'tiebreak',
-					score: { a: 6, b: 7 },
-					tiebreakLoserScore: tiebreak.score.a,
-				},
+	result: { kind: 'decidedByGames', score: { a, b } },
 })
+
+const wonInTiebreak = (result: TiebreakWin): SetTransition =>
+	match(result)
+		.returnType<SetTransition>()
+		.with({ winner: 'a' }, ({ score }) => ({
+			outcome: 'setWon',
+			setWinner: 'a',
+			result: {
+				kind: 'decidedByTiebreak',
+				score: { a: 7, b: 6 },
+				tiebreakLoserScore: score.b,
+			},
+		}))
+		.with({ winner: 'b' }, ({ score }) => ({
+			outcome: 'setWon',
+			setWinner: 'b',
+			result: {
+				kind: 'decidedByTiebreak',
+				score: { a: 6, b: 7 },
+				tiebreakLoserScore: score.a,
+			},
+		}))
+		.exhaustive()
 
 // Set transitions after a completed game
 const transitions = {
-	loveLove: { a: playing('oneLove'), b: playing('loveOne') },
-	loveOne: { a: playing('oneOne'), b: playing('loveTwo') },
-	loveTwo: { a: playing('oneTwo'), b: playing('loveThree') },
-	loveThree: { a: playing('oneThree'), b: playing('loveFour') },
-	loveFour: { a: playing('oneFour'), b: playing('loveFive') },
-	loveFive: { a: playing('oneFive'), b: won('b', 0, 6) },
-	oneLove: { a: playing('twoLove'), b: playing('oneOne') },
-	oneOne: { a: playing('twoOne'), b: playing('oneTwo') },
-	oneTwo: { a: playing('twoTwo'), b: playing('oneThree') },
-	oneThree: { a: playing('twoThree'), b: playing('oneFour') },
-	oneFour: { a: playing('twoFour'), b: playing('oneFive') },
-	oneFive: { a: playing('twoFive'), b: won('b', 1, 6) },
-	twoLove: { a: playing('threeLove'), b: playing('twoOne') },
-	twoOne: { a: playing('threeOne'), b: playing('twoTwo') },
-	twoTwo: { a: playing('threeTwo'), b: playing('twoThree') },
-	twoThree: { a: playing('threeThree'), b: playing('twoFour') },
-	twoFour: { a: playing('threeFour'), b: playing('twoFive') },
-	twoFive: { a: playing('threeFive'), b: won('b', 2, 6) },
-	threeLove: { a: playing('fourLove'), b: playing('threeOne') },
-	threeOne: { a: playing('fourOne'), b: playing('threeTwo') },
-	threeTwo: { a: playing('fourTwo'), b: playing('threeThree') },
-	threeThree: { a: playing('fourThree'), b: playing('threeFour') },
-	threeFour: { a: playing('fourFour'), b: playing('threeFive') },
-	threeFive: { a: playing('fourFive'), b: won('b', 3, 6) },
-	fourLove: { a: playing('fiveLove'), b: playing('fourOne') },
-	fourOne: { a: playing('fiveOne'), b: playing('fourTwo') },
-	fourTwo: { a: playing('fiveTwo'), b: playing('fourThree') },
-	fourThree: { a: playing('fiveThree'), b: playing('fourFour') },
-	fourFour: { a: playing('fiveFour'), b: playing('fourFive') },
-	fourFive: { a: playing('fiveFive'), b: won('b', 4, 6) },
-	fiveLove: { a: won('a', 6, 0), b: playing('fiveOne') },
-	fiveOne: { a: won('a', 6, 1), b: playing('fiveTwo') },
-	fiveTwo: { a: won('a', 6, 2), b: playing('fiveThree') },
-	fiveThree: { a: won('a', 6, 3), b: playing('fiveFour') },
-	fiveFour: { a: won('a', 6, 4), b: playing('fiveFive') },
-	fiveFive: { a: playing('sixFive'), b: playing('fiveSix') },
-	sixFive: { a: won('a', 7, 5), b: tiebreak() },
-	fiveSix: { a: tiebreak(), b: won('b', 5, 7) },
+	loveLove: { a: continues(regularGame('oneLove')), b: continues(regularGame('loveOne')) },
+	loveOne: { a: continues(regularGame('oneOne')), b: continues(regularGame('loveTwo')) },
+	loveTwo: { a: continues(regularGame('oneTwo')), b: continues(regularGame('loveThree')) },
+	loveThree: { a: continues(regularGame('oneThree')), b: continues(regularGame('loveFour')) },
+	loveFour: { a: continues(regularGame('oneFour')), b: continues(regularGame('loveFive')) },
+	loveFive: { a: continues(regularGame('oneFive')), b: won('b', 0, 6) },
+	oneLove: { a: continues(regularGame('twoLove')), b: continues(regularGame('oneOne')) },
+	oneOne: { a: continues(regularGame('twoOne')), b: continues(regularGame('oneTwo')) },
+	oneTwo: { a: continues(regularGame('twoTwo')), b: continues(regularGame('oneThree')) },
+	oneThree: { a: continues(regularGame('twoThree')), b: continues(regularGame('oneFour')) },
+	oneFour: { a: continues(regularGame('twoFour')), b: continues(regularGame('oneFive')) },
+	oneFive: { a: continues(regularGame('twoFive')), b: won('b', 1, 6) },
+	twoLove: { a: continues(regularGame('threeLove')), b: continues(regularGame('twoOne')) },
+	twoOne: { a: continues(regularGame('threeOne')), b: continues(regularGame('twoTwo')) },
+	twoTwo: { a: continues(regularGame('threeTwo')), b: continues(regularGame('twoThree')) },
+	twoThree: { a: continues(regularGame('threeThree')), b: continues(regularGame('twoFour')) },
+	twoFour: { a: continues(regularGame('threeFour')), b: continues(regularGame('twoFive')) },
+	twoFive: { a: continues(regularGame('threeFive')), b: won('b', 2, 6) },
+	threeLove: { a: continues(regularGame('fourLove')), b: continues(regularGame('threeOne')) },
+	threeOne: { a: continues(regularGame('fourOne')), b: continues(regularGame('threeTwo')) },
+	threeTwo: { a: continues(regularGame('fourTwo')), b: continues(regularGame('threeThree')) },
+	threeThree: { a: continues(regularGame('fourThree')), b: continues(regularGame('threeFour')) },
+	threeFour: { a: continues(regularGame('fourFour')), b: continues(regularGame('threeFive')) },
+	threeFive: { a: continues(regularGame('fourFive')), b: won('b', 3, 6) },
+	fourLove: { a: continues(regularGame('fiveLove')), b: continues(regularGame('fourOne')) },
+	fourOne: { a: continues(regularGame('fiveOne')), b: continues(regularGame('fourTwo')) },
+	fourTwo: { a: continues(regularGame('fiveTwo')), b: continues(regularGame('fourThree')) },
+	fourThree: { a: continues(regularGame('fiveThree')), b: continues(regularGame('fourFour')) },
+	fourFour: { a: continues(regularGame('fiveFour')), b: continues(regularGame('fourFive')) },
+	fourFive: { a: continues(regularGame('fiveFive')), b: won('b', 4, 6) },
+	fiveLove: { a: won('a', 6, 0), b: continues(regularGame('fiveOne')) },
+	fiveOne: { a: won('a', 6, 1), b: continues(regularGame('fiveTwo')) },
+	fiveTwo: { a: won('a', 6, 2), b: continues(regularGame('fiveThree')) },
+	fiveThree: { a: won('a', 6, 3), b: continues(regularGame('fiveFour')) },
+	fiveFour: { a: won('a', 6, 4), b: continues(regularGame('fiveFive')) },
+	fiveFive: { a: continues(regularGame('sixFive')), b: continues(regularGame('fiveSix')) },
+	sixFive: { a: won('a', 7, 5), b: continues(tiebreak()) },
+	fiveSix: { a: continues(tiebreak()), b: won('b', 5, 7) },
 } as const satisfies SetTransitions
 
 // Display scores
@@ -201,47 +215,43 @@ const scores = {
 } as const satisfies Readonly<Record<SetGameScore, SetScore>>
 
 // Initial state
-export const initialSet: Set = playing('loveLove')
+export const initialSet: Set = regularGame('loveLove')
 
 // State transition
 export const scorePoint =
 	(pointWinner: Player) =>
-	(set: Set): Set => {
+	(set: Set): SetTransition => {
 		switch (set.state) {
-			case 'playing': {
-				const game = scoreGamePoint(pointWinner)(set.game)
-
-				return pipe(
-					gameWinner(game),
-					O.match(
-						() => ({ ...set, game }),
-						winner => transitions[set.games][winner],
-					),
-				)
-			}
-			case 'tiebreak': {
-				const tiebreak = scoreTiebreakPoint(pointWinner)(set.tiebreak)
-
-				switch (tiebreak.state) {
-					case 'playing':
-						return { ...set, tiebreak }
-					case 'won':
-						return wonInTiebreak(tiebreak.tiebreakWinner, tiebreak)
-				}
-			}
-			case 'won':
-				return set
+			case 'regularGame':
+				return match(scoreGamePoint(pointWinner)(set.game))
+					.returnType<SetTransition>()
+					.with({ outcome: 'gameContinues' }, ({ game }) =>
+						continues({ ...set, game }),
+					)
+					.with(
+						{ outcome: 'gameWon' },
+						({ gameWinner }) => transitions[set.games][gameWinner],
+					)
+					.exhaustive()
+			case 'tiebreak':
+				return match(scoreTiebreakPoint(pointWinner)(set.tiebreak))
+					.returnType<SetTransition>()
+					.with({ outcome: 'tiebreakContinues' }, ({ tiebreak }) =>
+						continues({ ...set, tiebreak }),
+					)
+					.with({ outcome: 'tiebreakWon' }, ({ result }) =>
+						wonInTiebreak(result),
+					)
+					.exhaustive()
 		}
 	}
 
 // Queries and projections
 export const score = (set: Set): SetScore => {
 	switch (set.state) {
-		case 'playing':
+		case 'regularGame':
 			return scores[set.games]
 		case 'tiebreak':
 			return { a: 6, b: 6 }
-		case 'won':
-			return set.result.score
 	}
 }

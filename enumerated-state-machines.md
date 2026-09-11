@@ -5,13 +5,18 @@ A function maps an input to an output. One common implementation stores a compac
 ```ts
 type Player = 'a' | 'b'
 
+type GameInProgress = Readonly<{
+	state: 'inProgress'
+	points: Readonly<Record<Player, number>>
+}>
+
 type Game =
-	| { state: 'playing'; points: Readonly<Record<Player, number>> }
+	| GameInProgress
 	| { state: 'won'; gameWinner: Player }
 
 const scorePoint =
 	(pointWinner: Player) =>
-	(game: Extract<Game, { state: 'playing' }>): Game => {
+	(game: GameInProgress): Game => {
 		const nextPoints = {
 			...game.points,
 			[pointWinner]: game.points[pointWinner] + 1,
@@ -23,7 +28,7 @@ const scorePoint =
 
 		return hasEnoughPoints && hasTwoPointLead
 			? { state: 'won', gameWinner: pointWinner }
-			: { state: 'playing', points: nextPoints }
+			: { state: 'inProgress', points: nextPoints }
 	}
 ```
 
@@ -59,8 +64,6 @@ export type Game =
 	| 'deuce'
 	| 'advantageA'
 	| 'advantageB'
-	| 'wonA'
-	| 'wonB'
 ```
 
 This type is not merely a list of labels. It defines the complete state space of the game. Values such as `fortyFifty`, `advantageAWithThirty`, or `playerAHasFivePoints` cannot be constructed because they are not game states.
@@ -85,25 +88,39 @@ Both input sets are finite. A player is either A or B, and `Game` contains a fix
 export type Player = 'a' | 'b'
 
 type GameTransitions = Readonly<
-	Record<Game, Readonly<Record<Player, Game>>>
+	Record<Game, Readonly<Record<Player, GameResult>>>
 >
+
+type GameResult =
+	| { outcome: 'gameContinues'; game: Game }
+	| { outcome: 'gameWon'; gameWinner: Player }
+
+const continues = (game: Game): GameResult => ({
+	outcome: 'gameContinues',
+	game,
+})
+
+const won = (gameWinner: Player): GameResult => ({
+	outcome: 'gameWon',
+	gameWinner,
+})
 
 const transitions = {
 	loveLove: {
-		a: 'fifteenLove',
-		b: 'loveFifteen',
+		a: continues('fifteenLove'),
+		b: continues('loveFifteen'),
 	},
 	thirtyForty: {
-		a: 'deuce',
-		b: 'wonB',
+		a: continues('deuce'),
+		b: won('b'),
 	},
 	deuce: {
-		a: 'advantageA',
-		b: 'advantageB',
+		a: continues('advantageA'),
+		b: continues('advantageB'),
 	},
 	advantageA: {
-		a: 'wonA',
-		b: 'deuce',
+		a: won('a'),
+		b: continues('deuce'),
 	},
 
 	// Every other Game state appears here too
@@ -115,7 +132,7 @@ The implementation of `scorePoint` almost disappears:
 ```ts
 export const scorePoint =
 	(pointWinner: Player) =>
-	(game: Game): Game =>
+	(game: Game): GameResult =>
 		transitions[game][pointWinner]
 ```
 
@@ -123,7 +140,7 @@ There is no scoring algorithm to simulate mentally. The transition table is the 
 
 > With an algorithmic implementation, understanding the result often means executing the code in your head: track the intermediate values, follow their dependencies, and determine which result they produce.
 
-To learn what happens when Player A wins at `thirtyForty`, find that row and read `a: 'deuce'`. The code states the fact directly.
+To learn what happens when Player A wins at `thirtyForty`, find that row and read `a: continues('deuce')`. The code states the fact directly.
 
 This distinction matters more than line count. The table may contain more text than an arithmetic algorithm, but it asks less of its reader. A rule change becomes a change to the affected mappings rather than another condition woven into a calculation. A new state becomes a new required table entry, and TypeScript identifies every total mapping that must account for it.
 
@@ -164,19 +181,19 @@ After a game is won, another table decides what happens to the set:
 ```ts
 const transitions = {
 	loveLove: {
-		a: playing('oneLove'),
-		b: playing('loveOne'),
+		a: continues(game('oneLove')),
+		b: continues(game('loveOne')),
 	},
 	fiveFive: {
-		a: playing('sixFive'),
-		b: playing('fiveSix'),
+		a: continues(game('sixFive')),
+		b: continues(game('fiveSix')),
 	},
 	sixFive: {
 		a: won('a', 7, 5),
-		b: tiebreak(),
+		b: continues(tiebreak()),
 	},
 	fiveSix: {
-		a: tiebreak(),
+		a: continues(tiebreak()),
 		b: won('b', 5, 7),
 	},
 
@@ -189,6 +206,34 @@ This is undeniably verbose. Programmers are accustomed to treating fewer lines a
 A compressed algorithm can be shorter while being harder to understand. Here, the source is long in the same way a clearly printed rulebook is long: every relevant case is visible, local, and easy to inspect. Code length is not the same thing as conceptual complexity.
 
 The table also makes asymmetry easy to spot. A typo in one side of a transition looks suspicious when placed beside its mirror image.
+
+## Keep state and transition results separate
+
+A playable child state is not the same thing as the result of updating it. A game can continue or be won, but a won game is never stored as the current game of a set:
+
+```ts
+type GameResult =
+	| { outcome: 'gameContinues'; game: Game }
+	| { outcome: 'gameWon'; gameWinner: Player }
+```
+
+The set consumes that result immediately. It either stores the next playable `Game` or updates its own score. The same distinction applies between a set and a match:
+
+```ts
+type SetTransition =
+	| { outcome: 'setContinues'; set: Set }
+	| { outcome: 'setWon'; setWinner: Player; result: SetResult }
+```
+
+Consequently, `Set` means a set that can receive another point. `SetResult` means historical information about a completed set. We do not need types such as `ActiveSet` or `WonSet`, and an in-progress match cannot contain a won current set.
+
+This follows the Elm Architecture at the application level as well. The complete `Match` is the model, messages describe events, and one pure update function produces the next model:
+
+```text
+Message → update → Match → view
+```
+
+Only a completed match remains as terminal application state. Completed games, tiebreaks, and sets flow upward as transition results for their parent to consume.
 
 ## State machines can contain state machines
 
@@ -232,35 +277,42 @@ export type TiebreakScore = Readonly<{
 	b: number
 }>
 
-export type Tiebreak =
-	| { state: 'playing'; score: TiebreakScore }
-	| {
-			state: 'won'
-			tiebreakWinner: Player
-			score: TiebreakScore
-	  }
+export type Tiebreak = Readonly<{
+	score: TiebreakScore
+}>
+
+export type TiebreakWin = Readonly<{
+	winner: Player
+	score: TiebreakScore
+}>
+
+export type TiebreakResult =
+	| { outcome: 'tiebreakContinues'; tiebreak: Tiebreak }
+	| { outcome: 'tiebreakWon'; result: TiebreakWin }
 ```
 
 Its transition contains a small calculation:
 
 ```ts
-const scorePlayingTiebreak = (
-	tiebreak: PlayingTiebreak,
-	pointWinner: Player,
-): Tiebreak => {
-	const score = {
-		...tiebreak.score,
-		[pointWinner]: tiebreak.score[pointWinner] + 1,
+const scorePoint =
+	(pointWinner: Player) =>
+	(tiebreak: Tiebreak): TiebreakResult => {
+		const score = {
+			...tiebreak.score,
+			[pointWinner]: tiebreak.score[pointWinner] + 1,
+		}
+
+		const isTiebreakWon =
+			score[pointWinner] >= 7 &&
+			score[pointWinner] - score[opponent(pointWinner)] >= 2
+
+		return isTiebreakWon
+			? {
+					outcome: 'tiebreakWon',
+					result: { winner: pointWinner, score },
+				}
+			: { outcome: 'tiebreakContinues', tiebreak: { score } }
 	}
-
-	const isTiebreakWon =
-		score[pointWinner] >= 7 &&
-		score[pointWinner] - score[opponent(pointWinner)] >= 2
-
-	return isTiebreakWon
-		? { state: 'won', tiebreakWinner: pointWinner, score }
-		: { state: 'playing', score }
-}
 ```
 
 This is not a retreat from the philosophy. It is the philosophy applied honestly. A finite lookup table is excellent for a finite domain. An unbounded numeric domain calls for a small pure calculation.
@@ -270,16 +322,16 @@ This is not a retreat from the philosophy. It is the philosophy applied honestly
 Lookup tables do not replace every conditional construct. Switches are excellent for dispatching over discriminated states:
 
 ```ts
-export const winner = (
-	tiebreak: Tiebreak,
-): O.Option<Player> => {
-	switch (tiebreak.state) {
-		case 'won':
-			return O.some(tiebreak.tiebreakWinner)
-		case 'playing':
-			return O.none
+export const scorePoint =
+	(pointWinner: Player) =>
+	(tennisMatch: Match): Match => {
+		switch (tennisMatch.state) {
+			case 'inProgress':
+				return scoreInProgressMatch(tennisMatch, pointWinner)
+			case 'completed':
+				return tennisMatch
+		}
 	}
-}
 ```
 
 Statements—and `switch` statements in particular—are sometimes considered anti-functional because they describe control flow and, unlike an Elm `case`, a JavaScript switch is not an expression. That is a useful pressure against sprawling procedural code, but it need not become a prohibition. An exhaustive switch inside a pure function is still deterministic, contains no mutation, and can make each variant of a TypeScript discriminated union immediately visible.

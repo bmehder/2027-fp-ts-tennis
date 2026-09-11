@@ -6,45 +6,38 @@ type TiebreakScore = Readonly<{
 	b: number
 }>
 
-export type Tiebreak =
-	| { state: 'playing'; score: TiebreakScore }
-	| { state: 'won'; tiebreakWinner: Player; score: TiebreakScore }
+export type Tiebreak = Readonly<{
+	score: TiebreakScore
+}>
 
-// Helper types and functions
-type PlayingTiebreak = Extract<Tiebreak, { state: 'playing' }>
+export type TiebreakWin = Readonly<{
+	winner: Player
+	score: TiebreakScore
+}>
 
-const scorePlayingTiebreak = (
-	tiebreak: PlayingTiebreak,
-	pointWinner: Player,
-): Tiebreak => {
-	const score = {
-		...tiebreak.score,
-		[pointWinner]: tiebreak.score[pointWinner] + 1,
-	}
-
-	const isTiebreakWon =
-		score[pointWinner] >= 7 &&
-		score[pointWinner] - score[opponent(pointWinner)] >= 2
-
-	return isTiebreakWon
-		? { state: 'won', tiebreakWinner: pointWinner, score }
-		: { state: 'playing', score }
-}
+export type TiebreakResult =
+	| { outcome: 'tiebreakContinues'; tiebreak: Tiebreak }
+	| { outcome: 'tiebreakWon'; result: TiebreakWin }
 
 // Initial state
 export const initialTiebreak: Tiebreak = {
-	state: 'playing',
 	score: { a: 0, b: 0 },
 }
 
 // State transition
 export const scorePoint =
 	(pointWinner: Player) =>
-	(tiebreak: Tiebreak): Tiebreak => {
-		switch (tiebreak.state) {
-			case 'playing':
-				return scorePlayingTiebreak(tiebreak, pointWinner)
-			case 'won':
-				return tiebreak
+	(tiebreak: Tiebreak): TiebreakResult => {
+		const score = {
+			...tiebreak.score,
+			[pointWinner]: tiebreak.score[pointWinner] + 1,
 		}
+
+		const isTiebreakWon =
+			score[pointWinner] >= 7 &&
+			score[pointWinner] - score[opponent(pointWinner)] >= 2
+
+		return isTiebreakWon
+			? { outcome: 'tiebreakWon', result: { winner: pointWinner, score } }
+			: { outcome: 'tiebreakContinues', tiebreak: { score } }
 	}

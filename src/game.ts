@@ -1,4 +1,3 @@
-import * as O from 'fp-ts/Option'
 import { type Player } from './player.js'
 
 // Types
@@ -21,8 +20,10 @@ export type Game =
 	| 'deuce'
 	| 'advantageA'
 	| 'advantageB'
-	| 'wonA'
-	| 'wonB'
+
+export type GameResult =
+	| { outcome: 'gameContinues'; game: Game }
+	| { outcome: 'gameWon'; gameWinner: Player }
 
 type GameScore = Readonly<{
 	a: string
@@ -30,31 +31,58 @@ type GameScore = Readonly<{
 }>
 
 type GameTransitions = Readonly<
-	Record<Game, Readonly<Record<Player, Game>>>
+	Record<Game, Readonly<Record<Player, GameResult>>>
 >
+
+// Helper functions
+const continues = (game: Game): GameResult => ({
+	outcome: 'gameContinues',
+	game,
+})
+
+const won = (gameWinner: Player): GameResult => ({
+	outcome: 'gameWon',
+	gameWinner,
+})
 
 // State transitions
 const transitions = {
-	loveLove: { a: 'fifteenLove', b: 'loveFifteen' },
-	loveFifteen: { a: 'fifteenFifteen', b: 'loveThirty' },
-	fifteenLove: { a: 'thirtyLove', b: 'fifteenFifteen' },
-	loveThirty: { a: 'fifteenThirty', b: 'loveForty' },
-	thirtyLove: { a: 'fortyLove', b: 'thirtyFifteen' },
-	fifteenFifteen: { a: 'thirtyFifteen', b: 'fifteenThirty' },
-	loveForty: { a: 'fifteenForty', b: 'wonB' },
-	fortyLove: { a: 'wonA', b: 'fortyFifteen' },
-	fifteenThirty: { a: 'thirtyThirty', b: 'fifteenForty' },
-	thirtyFifteen: { a: 'fortyFifteen', b: 'thirtyThirty' },
-	fifteenForty: { a: 'thirtyForty', b: 'wonB' },
-	fortyFifteen: { a: 'wonA', b: 'fortyThirty' },
-	thirtyThirty: { a: 'fortyThirty', b: 'thirtyForty' },
-	thirtyForty: { a: 'deuce', b: 'wonB' },
-	fortyThirty: { a: 'wonA', b: 'deuce' },
-	deuce: { a: 'advantageA', b: 'advantageB' },
-	advantageA: { a: 'wonA', b: 'deuce' },
-	advantageB: { a: 'deuce', b: 'wonB' },
-	wonA: { a: 'wonA', b: 'wonA' },
-	wonB: { a: 'wonB', b: 'wonB' },
+	loveLove: { a: continues('fifteenLove'), b: continues('loveFifteen') },
+	loveFifteen: {
+		a: continues('fifteenFifteen'),
+		b: continues('loveThirty'),
+	},
+	fifteenLove: {
+		a: continues('thirtyLove'),
+		b: continues('fifteenFifteen'),
+	},
+	loveThirty: { a: continues('fifteenThirty'), b: continues('loveForty') },
+	thirtyLove: { a: continues('fortyLove'), b: continues('thirtyFifteen') },
+	fifteenFifteen: {
+		a: continues('thirtyFifteen'),
+		b: continues('fifteenThirty'),
+	},
+	loveForty: { a: continues('fifteenForty'), b: won('b') },
+	fortyLove: { a: won('a'), b: continues('fortyFifteen') },
+	fifteenThirty: {
+		a: continues('thirtyThirty'),
+		b: continues('fifteenForty'),
+	},
+	thirtyFifteen: {
+		a: continues('fortyFifteen'),
+		b: continues('thirtyThirty'),
+	},
+	fifteenForty: { a: continues('thirtyForty'), b: won('b') },
+	fortyFifteen: { a: won('a'), b: continues('fortyThirty') },
+	thirtyThirty: {
+		a: continues('fortyThirty'),
+		b: continues('thirtyForty'),
+	},
+	thirtyForty: { a: continues('deuce'), b: won('b') },
+	fortyThirty: { a: won('a'), b: continues('deuce') },
+	deuce: { a: continues('advantageA'), b: continues('advantageB') },
+	advantageA: { a: won('a'), b: continues('deuce') },
+	advantageB: { a: continues('deuce'), b: won('b') },
 } as const satisfies GameTransitions
 
 // Display scores
@@ -77,8 +105,6 @@ const displayScores = {
 	deuce: { a: '40', b: '40' },
 	advantageA: { a: 'AD', b: '40' },
 	advantageB: { a: '40', b: 'AD' },
-	wonA: { a: '', b: '' },
-	wonB: { a: '', b: '' },
 } as const satisfies Readonly<Record<Game, GameScore>>
 
 // Initial state
@@ -87,19 +113,8 @@ export const initialGame: Game = 'loveLove'
 // State transition
 export const scorePoint =
 	(pointWinner: Player) =>
-	(game: Game): Game =>
+	(game: Game): GameResult =>
 		transitions[game][pointWinner]
 
-// Queries and projections
-export const winner = (game: Game): O.Option<Player> => {
-	switch (game) {
-		case 'wonA':
-			return O.some('a')
-		case 'wonB':
-			return O.some('b')
-		default:
-			return O.none
-	}
-}
-
+// Projection
 export const displayScore = (game: Game): GameScore => displayScores[game]
