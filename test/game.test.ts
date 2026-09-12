@@ -5,8 +5,8 @@ import {
 	initialGame,
 	scorePoint,
 	type GameResult,
-} from '../src/game.js'
-import { type Player } from '../src/player.js'
+} from '../src/tennis/game.js'
+import { type Player } from '../src/tennis/player.js'
 
 const play = (points: Player[]): GameResult =>
 	points.reduce<GameResult>(

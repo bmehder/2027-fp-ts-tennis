@@ -1,11 +1,11 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { type Player } from '../src/player.js'
+import { type Player } from '../src/tennis/player.js'
 import {
 	initialSet,
 	scorePoint,
 	type SetTransition,
-} from '../src/set.js'
+} from '../src/tennis/set.js'
 
 const gameWonBy = (player: Player): Player[] => [player, player, player, player]
 

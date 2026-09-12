@@ -14,7 +14,7 @@ npm run check
 npm test
 ```
 
-`src/game.ts` contains the pure scoring model. `Game` is a discriminated union,
+`src/tennis/game.ts` contains the pure scoring model. `Game` is a discriminated union,
 its state transitions use exhaustive switches, and a possible winner is
 represented as `Option<Player>`.
 

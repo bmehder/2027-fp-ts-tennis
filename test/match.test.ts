@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { type Player } from '../src/player.js'
-import { initialMatch, scorePoint, type Match } from '../src/match.js'
+import { type Player } from '../src/tennis/player.js'
+import { initialMatch, scorePoint, type Match } from '../src/tennis/match.js'
 
 const play = (points: Player[]) =>
 	points.reduce(

@@ -2,15 +2,15 @@ import * as O from 'fp-ts/Option'
 import { map } from 'fp-ts/ReadonlyArray'
 import { pipe } from 'fp-ts/function'
 import { match } from 'ts-pattern'
-import { displayScore } from './game.js'
-import { initialMatch, scorePoint, type Match } from './match.js'
-import { type Player } from './player.js'
+import { displayScore } from './tennis/game.js'
+import { initialMatch, scorePoint, type Match } from './tennis/match.js'
+import { type Player } from './tennis/player.js'
 import {
 	score as setScore,
 	type Set,
 	type SetResult,
 	type SetScore,
-} from './set.js'
+} from './tennis/set.js'
 import { explicit as track, fx, implicit as derive } from './slank.js'
 
 const elements = {

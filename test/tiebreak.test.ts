@@ -1,11 +1,11 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { type Player } from '../src/player.js'
+import { type Player } from '../src/tennis/player.js'
 import {
 	initialTiebreak,
 	scorePoint,
 	type TiebreakResult,
-} from '../src/tiebreak.js'
+} from '../src/tennis/tiebreak.js'
 
 const play = (points: Player[]): TiebreakResult =>
 	points.reduce<TiebreakResult>(

@@ -1,48 +1,34 @@
-# When Functions Are Maps: Modeling Tennis with Enumerated States
+# When the Rules Are Finite, Write Them Down
 
-A function maps an input to an output. One common implementation stores a compact representation and calculates what it means:
+Here is the argument of this article:
 
-```ts
-type Player = 'a' | 'b'
+> When a domain has a small, finite set of states and events, the clearest implementation is often a table containing every valid transition.
 
-type GameInProgress = Readonly<{
-	state: 'inProgress'
-	points: Readonly<Record<Player, number>>
-}>
+Not always. Not for every function, and not for every state machine. But when the domain is finite enough to fit comfortably in one file, writing down the answers can be clearer than writing an algorithm that calculates them.
 
-type Game =
-	| GameInProgress
-	| { state: 'won'; gameWinner: Player }
+A tennis game is a good example. Its rules are familiar, slightly irregular, and small enough to enumerate. That combination lets us compare two ways of representing the same behavior.
 
-const scorePoint =
-	(pointWinner: Player) =>
-	(game: GameInProgress): Game => {
-		const nextPoints = {
-			...game.points,
-			[pointWinner]: game.points[pointWinner] + 1,
-		}
-		const pointWinnerScore = nextPoints[pointWinner]
-		const opponentScore = nextPoints[opponent(pointWinner)]
-		const hasEnoughPoints = pointWinnerScore >= 4
-		const hasTwoPointLead = pointWinnerScore - opponentScore >= 2
+The complete project is available in the [fp-ts tennis repository](https://github.com/bmehder/2027-fp-ts-tennis).
 
-		return hasEnoughPoints && hasTwoPointLead
-			? { state: 'won', gameWinner: pointWinner }
-			: { state: 'inProgress', points: nextPoints }
-	}
-```
+## The problem is not mutation
 
-This is still a pure function. The issue is that understanding the result requires following a procedure: calculate `nextPoints`, use it to calculate two scores, use those scores to calculate two facts, and then combine those facts to choose the result.
+Suppose we represent a tennis game with two point counts. Scoring a point might mean incrementing one count, checking whether that player has at least four points, and checking whether the lead is at least two.
 
-That mental execution is manageable here, but it becomes harder as an algorithm accumulates more temporary values and dependencies between them. Changing the rules also means reasoning about how a new condition interacts with the existing calculation. The code may be concise, yet much of its behavior remains implicit in the procedure.
+That can be implemented as a pure function. It does not require mutation, classes, or side effects. Those are not the problem.
 
-When the input domain is finite, we can sometimes avoid that procedure and write down the map itself.
+The problem is that the tennis rules are hidden inside a procedure. To answer a concrete question—what happens when Player A wins a point at 30–40?—a reader must understand what the numbers represent, update the right number, follow the comparisons, and translate the result back into tennis language.
 
-The result can be more verbose than an arithmetic implementation, but it is also unusually direct: the source code is a readable description of the scoring rules.
+> Understanding an algorithm often means executing it in your head: track the intermediate values, follow their dependencies, evaluate the conditions, and determine which result they produce.
 
-## Enumerate the valid states
+That work may be easy for a small function. It becomes less easy as exceptions and new rules accumulate. The source can remain compact while the behavior becomes increasingly implicit.
 
-A tennis game has a small, finite set of meaningful states. Instead of storing two numbers and interpreting them later, we can name every possible state:
+But a tennis game does not have an arbitrary collection of scores. It has a short list of meaningful situations, and each situation has exactly two possible events: Player A wins the next point or Player B does.
+
+We can write those facts down directly.
+
+## Start with the vocabulary of the game
+
+These are the playable states in an advantage-scoring tennis game:
 
 ```ts
 export type Game =
@@ -66,35 +52,45 @@ export type Game =
 	| 'advantageB'
 ```
 
-This type is not merely a list of labels. It defines the complete state space of the game. Values such as `fortyFifty`, `advantageAWithThirty`, or `playerAHasFivePoints` cannot be constructed because they are not game states.
+This is more verbose than two numbers. It is also more informative.
 
-The type [makes invalid states unrepresentable](https://youtu.be/IcgmSRJHu_8?si=gu3SwM4HSEbitjqr).
+A `Game` cannot be 50–15. Both players cannot have advantage. A score cannot be negative. We do not need guards for those cases because they are not members of the type. The model [makes invalid states unrepresentable](https://youtu.be/IcgmSRJHu_8?si=gu3SwM4HSEbitjqr).
 
-That changes the rest of the program. Functions receiving a `Game` do not need to ask whether both players somehow have advantage, whether a player has forty while the other has advantage, or whether some numeric score is outside the rules. Those values cannot be constructed through the typed domain model, so the core does not need to surround every operation with defensive `if` checks and guards.
+Validation may still be necessary where unknown data enters a program. Inside the typed domain, however, every `Game` is already known to be a real tennis state. Functions can concentrate on the rules instead of repeatedly defending themselves from values the program should never have created.
 
-Data entering from an untyped boundary may still need to be validated once. Inside the typed program, however, that work does not need to be repeated. Every `Game` can be treated as a valid game.
+The names also remove a layer of interpretation. `thirtyForty` says what the state means. The reader does not need to remember whether `{ a: 2, b: 3 }` represents total points won, displayed points, or some normalized score used to make an algorithm convenient.
 
-## Write the function as data
+## A function is a mapping
 
-Scoring a point is a function of two inputs:
+Scoring a point is a function with two inputs:
 
 ```text
-current game × point winner → next game
+current game × point winner → result
 ```
 
-Both input sets are finite. A player is either A or B, and `Game` contains a fixed set of states. We can therefore write the entire function as a lookup table:
+`Game` is finite. `Player` is finite:
 
 ```ts
 export type Player = 'a' | 'b'
+```
+
+Because every possible input is known, we can represent the function as a `Record`:
+
+```ts
+export type GameResult =
+	| { outcome: 'gameContinues'; game: Game }
+	| { outcome: 'gameWon'; gameWinner: Player }
 
 type GameTransitions = Readonly<
 	Record<Game, Readonly<Record<Player, GameResult>>>
 >
+```
 
-type GameResult =
-	| { outcome: 'gameContinues'; game: Game }
-	| { outcome: 'gameWon'; gameWinner: Player }
+The outer record contains an entry for every game state. The inner record contains an answer for each possible point winner.
 
+A few small constructors keep the table readable:
+
+```ts
 const continues = (game: Game): GameResult => ({
 	outcome: 'gameContinues',
 	game,
@@ -104,12 +100,12 @@ const won = (gameWinner: Player): GameResult => ({
 	outcome: 'gameWon',
 	gameWinner,
 })
+```
 
+Now the rules can be expressed as data:
+
+```ts
 const transitions = {
-	loveLove: {
-		a: continues('fifteenLove'),
-		b: continues('loveFifteen'),
-	},
 	thirtyForty: {
 		a: continues('deuce'),
 		b: won('b'),
@@ -122,12 +118,26 @@ const transitions = {
 		a: won('a'),
 		b: continues('deuce'),
 	},
+	advantageB: {
+		a: continues('deuce'),
+		b: won('b'),
+	},
 
-	// Every other Game state appears here too
+	// The other playable states follow the same shape
 } as const satisfies GameTransitions
 ```
 
-The implementation of `scorePoint` almost disappears:
+Read one row as a statement of fact:
+
+> At 30–40, a point won by A continues the game at deuce, while a point won by B wins the game for B.
+
+Nothing has to be incremented or compared before that fact becomes visible. The table is not a description of how to derive the tennis rule. It is the rule.
+
+This is the practical difference between the two representations. Imperative code tells the machine which steps produce an answer. Declarative code states what the answer is. A pure algorithm can still be procedural in this sense; purity and declarative modeling are separate concerns.
+
+## The implementation almost disappears
+
+Once the table exists, `scorePoint` is only a lookup:
 
 ```ts
 export const scorePoint =
@@ -136,140 +146,69 @@ export const scorePoint =
 		transitions[game][pointWinner]
 ```
 
-There is no scoring algorithm to simulate mentally. The transition table is the rulebook.
+This function contains no tennis logic because the table contains all of it.
 
-> With an algorithmic implementation, understanding the result often means executing the code in your head: track the intermediate values, follow their dependencies, and determine which result they produce.
+That makes concrete questions local. To find what happens after Player A wins at `thirtyForty`, look at one property in one row. There is no execution path to trace and no temporary state to retain while reading.
 
-To learn what happens when Player A wins at `thirtyForty`, find that row and read `a: continues('deuce')`. The code states the fact directly.
+It also changes how modifications feel. Adding a state means adding its transitions and updating any other total maps over `Game`. Changing one rule means changing the corresponding entry. The programmer edits facts instead of carefully inserting another condition into an existing calculation.
 
-This distinction matters more than line count. The table may contain more text than an arithmetic algorithm, but it asks less of its reader. A rule change becomes a change to the affected mappings rather than another condition woven into a calculation. A new state becomes a new required table entry, and TypeScript identifies every total mapping that must account for it.
+## Let TypeScript prove the table is complete
 
-## Why `as const satisfies` matters
-
-The end of the table carries two useful ideas:
+The annotation at the end of the table matters:
 
 ```ts
 as const satisfies GameTransitions
 ```
 
-`as const` preserves literal values and makes the inferred table deeply readonly at compile time. `satisfies GameTransitions` asks TypeScript to verify that the table implements the complete mapping.
+`as const` preserves the literal values in the object. `satisfies GameTransitions` checks that the object is a complete implementation of the mapping without replacing its useful inferred type.
 
-If we add a new member to `Game`, TypeScript reports that the table is missing a state. If we forget Player B's transition, TypeScript reports that too. The type and the data must evolve together.
+If a new member is added to `Game`, TypeScript reports that the table lacks a row. If one row omits Player B, TypeScript reports that the inner mapping is incomplete. If a transition points to a string that is not a `Game`, TypeScript rejects it.
 
-This is stronger than simply allowing TypeScript to infer whatever object we happened to write. We are stating an architectural fact:
+The compiler is checking a stronger claim than “this object looks reasonable”:
 
-> This value is the total transition function for a tennis game.
+> For every valid game and every possible point winner, this table contains a valid result.
 
-## More verbosity, less hidden behavior
+That is what makes the representation trustworthy. An explicit table without a completeness check could quietly omit part of the rulebook.
 
-A tennis set can be modeled similarly. With a tiebreak beginning at 6–6, it has 38 reachable in-progress game-score states, including:
+## Outcomes should not become playable states
 
-```ts
-type SetGameScore =
-	| 'loveLove'
-	| 'oneLove'
-	| 'loveOne'
-	| 'oneOne'
-	// ...
-	| 'fiveFive'
-	| 'sixFive'
-	| 'fiveSix'
-```
-
-After a game is won, another table decides what happens to the set:
+Notice that `Game` does not contain a `won` state. Winning is a possible result of scoring a point, but a completed game cannot receive another point.
 
 ```ts
-const transitions = {
-	loveLove: {
-		a: continues(game('oneLove')),
-		b: continues(game('loveOne')),
-	},
-	fiveFive: {
-		a: continues(game('sixFive')),
-		b: continues(game('fiveSix')),
-	},
-	sixFive: {
-		a: won('a', 7, 5),
-		b: continues(tiebreak()),
-	},
-	fiveSix: {
-		a: continues(tiebreak()),
-		b: won('b', 5, 7),
-	},
-
-	// All other reachable set scores
-} as const satisfies SetTransitions
-```
-
-This is undeniably verbose. Programmers are accustomed to treating fewer lines as an improvement, but 38 states are not a problem merely because writing them requires 38 entries. Most of that length is domain information. It tells us what happens at 5–5, 6–5, and 5–6 without making us reconstruct those rules from comparisons and arithmetic.
-
-A compressed algorithm can be shorter while being harder to understand. Here, the source is long in the same way a clearly printed rulebook is long: every relevant case is visible, local, and easy to inspect. Code length is not the same thing as conceptual complexity.
-
-The table also makes asymmetry easy to spot. A typo in one side of a transition looks suspicious when placed beside its mirror image.
-
-## Keep state and transition results separate
-
-A playable child state is not the same thing as the result of updating it. A game can continue or be won, but a won game is never stored as the current game of a set:
-
-```ts
-type GameResult =
+export type GameResult =
 	| { outcome: 'gameContinues'; game: Game }
 	| { outcome: 'gameWon'; gameWinner: Player }
 ```
 
-The set consumes that result immediately. It either stores the next playable `Game` or updates its own score. The same distinction applies between a set and a match:
+This distinction became important as the application grew. A set owns the current playable game. When that game produces `gameWon`, the set consumes the outcome immediately: it updates its game score, starts a new game, begins a tiebreak, or reports that the set has been won.
 
-```ts
-type SetTransition =
-	| { outcome: 'setContinues'; set: Set }
-	| { outcome: 'setWon'; setWinner: Player; result: SetResult }
-```
+The same relationship exists one level higher. A match owns the current playable set and consumes a `setWon` outcome. Completed set scores become match history; a completed `Set` does not remain in the position reserved for the current set.
 
-Consequently, `Set` means a set that can receive another point. `SetResult` means historical information about a completed set. We do not need types such as `ActiveSet` or `WonSet`, and an in-progress match cannot contain a won current set.
-
-This follows the Elm Architecture at the application level as well. The complete `Match` is the model, messages describe events, and one pure update function produces the next model:
-
-```text
-Message → update → Match → view
-```
-
-Only a completed match remains as terminal application state. Completed games, tiebreaks, and sets flow upward as transition results for their parent to consume.
-
-## State machines can contain state machines
-
-The complete application is layered:
+The resulting hierarchy is simple:
 
 ```text
 Match → Set → Game or Tiebreak
 ```
 
-A point first travels down to the active scoring unit. The resulting state then travels back up:
+Each model contains only states that make sense at its level. Each transition reports an outcome to the parent that knows what the outcome means. This avoids awkward extracted types and defensive checks for combinations that should not exist.
 
-```text
-point winner
-    ↓
-match delegates to set
-    ↓
-set delegates to game or tiebreak
-    ↓
-the lowest state transitions
-    ↑
-set incorporates the result
-    ↑
-match incorporates the result
-```
+This is the same principle as the transition table: represent the domain facts directly. “A set contains a game that can still be played” is a better model than “a set may contain any game state, but callers must check whether it has already ended.”
 
-Each module owns one level of the rules. `game.ts` does not know how many games win a set. `set.ts` does not know how many sets win a match. The modules communicate through explicit states and small public APIs.
+## Verbosity is not complexity
 
-This is functional architecture without requiring every expression to use a specialized combinator. Pure functions, immutable values, discriminated unions, exhaustive switches, pattern matching, and lookup tables can coexist.
+The same table-driven approach is used for ordinary game scores within a set. There are 38 reachable in-progress set scores before accounting for the tiebreak itself.
 
-## Stop enumerating when the domain stops being finite
+Writing 38 entries can feel wrong because programmers are trained to remove repetition and minimize code. But those entries are not 38 copies of an algorithm. They are 38 pieces of domain information.
 
-The tiebreak shows the limit of this technique.
+The relevant question is not how many lines the table occupies. It is how difficult each line is to understand, verify, and change. A long table of independent facts can have less conceptual complexity than a short algorithm whose conditions interact.
 
-A tiebreak is won at seven points with a lead of two, but it has no maximum score. It may finish 7–0, 9–7, 14–12, or continue indefinitely.
+There is a limit, of course. A thousand nearly identical entries would be difficult to navigate and maintain. Enumeration is useful only while the complete map remains easier for a person to inspect than the procedure that would generate it.
 
-The honest representation uses numbers:
+## Stop when the domain stops being finite
+
+A tennis tiebreak establishes that boundary clearly. It is won at seven points with a lead of two, but it has no maximum score. A tiebreak may finish 7–0, 9–7, or 14–12, and it can continue indefinitely.
+
+Enumerating every tiebreak score would require an infinite table. The honest model therefore uses numbers and a small calculation:
 
 ```ts
 export type TiebreakScore = Readonly<{
@@ -277,81 +216,25 @@ export type TiebreakScore = Readonly<{
 	b: number
 }>
 
-export type Tiebreak = Readonly<{
-	score: TiebreakScore
-}>
-
-export type TiebreakWin = Readonly<{
-	winner: Player
-	score: TiebreakScore
-}>
-
-export type TiebreakResult =
-	| { outcome: 'tiebreakContinues'; tiebreak: Tiebreak }
-	| { outcome: 'tiebreakWon'; result: TiebreakWin }
-```
-
-Its transition contains a small calculation:
-
-```ts
-const scorePoint =
+const hasWon =
 	(pointWinner: Player) =>
-	(tiebreak: Tiebreak): TiebreakResult => {
-		const score = {
-			...tiebreak.score,
-			[pointWinner]: tiebreak.score[pointWinner] + 1,
-		}
-
-		const isTiebreakWon =
-			score[pointWinner] >= 7 &&
-			score[pointWinner] - score[opponent(pointWinner)] >= 2
-
-		return isTiebreakWon
-			? {
-					outcome: 'tiebreakWon',
-					result: { winner: pointWinner, score },
-				}
-			: { outcome: 'tiebreakContinues', tiebreak: { score } }
-	}
+	(score: TiebreakScore): boolean =>
+		score[pointWinner] >= 7 &&
+		score[pointWinner] - score[opponent(pointWinner)] >= 2
 ```
 
-This is not a retreat from the philosophy. It is the philosophy applied honestly. A finite lookup table is excellent for a finite domain. An unbounded numeric domain calls for a small pure calculation.
+Using an algorithm here does not contradict the argument. It applies the boundary in the argument. Tables are compelling when the domain is finite, reasonably small, and meaningfully enumerated. An unbounded numeric domain calls for a calculation.
 
-## Switches and pattern matching still belong
+## Write down the rules when you can
 
-Lookup tables do not replace every conditional construct. Switches are excellent for dispatching over discriminated states:
+This is not a proposal to replace functions with objects. A lookup table is a function in the mathematical sense: it maps every input to exactly one output. It is simply a different implementation of that function.
 
-```ts
-export const scorePoint =
-	(pointWinner: Player) =>
-	(tennisMatch: Match): Match => {
-		switch (tennisMatch.state) {
-			case 'inProgress':
-				return scoreInProgressMatch(tennisMatch, pointWinner)
-			case 'completed':
-				return tennisMatch
-		}
-	}
-```
+Nor is it a demand to eliminate `switch`, pattern matching, arithmetic, or ordinary control flow. This application uses all of them where they express the model clearly. The point is narrower:
 
-Statements—and `switch` statements in particular—are sometimes considered anti-functional because they describe control flow and, unlike an Elm `case`, a JavaScript switch is not an expression. That is a useful pressure against sprawling procedural code, but it need not become a prohibition. An exhaustive switch inside a pure function is still deterministic, contains no mutation, and can make each variant of a TypeScript discriminated union immediately visible.
+> Do not automatically encode a finite rulebook as an algorithm merely because the algorithm uses fewer lines.
 
-This application also uses `ts-pattern` where structural pattern matching makes nested data easier to describe. It provides expression-oriented matching and exhaustiveness checking, but it also introduces a dependency and requires readers to know that package's API. For a simple dispatch, a native switch may be clearer. It can even be easier to scan than a short ternary: named `case` branches expose the domain choices instead of making the reader parse a condition and decide which half of an expression applies.
+First ask what the valid states are. Ask whether the possible events are finite. Ask whether the complete mapping would fit in a form that a reader could scan and verify.
 
-Structural matching, switches, and ternaries each have a place. The goal is not to ban syntax or satisfy a definition of functional purity. The goal is to choose a representation that lets the rules read like facts instead of a sequence of instructions.
+If it would, consider making the map.
 
-> Declarative code says what is true, while imperative code tells the machine how to arrive there. When the domain permits it, stating the facts directly leaves less code for the reader to execute mentally.
-
-## A practical rule
-
-When designing a transition, ask:
-
-1. What are all the valid states?
-2. Are the state and event spaces finite and reasonably small?
-3. Would an explicit table be easier to inspect than an algorithm?
-
-If the answer is yes, make the map.
-
-If the table would be infinite, mechanically generated, or too large to understand, keep the state explicit and use the smallest honest calculation.
-
-The lesson is not “replace functions with objects.” A lookup table is already a function in the mathematical sense. The lesson is that sometimes the clearest implementation of a function is simply to write down every value it maps to.
+The resulting program may be longer, but its behavior will be sitting in plain sight.
