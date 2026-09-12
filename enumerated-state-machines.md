@@ -8,8 +8,6 @@ Not always. Not for every function, and not for every state machine. But when th
 
 A tennis game is a good example. Its rules are familiar, slightly irregular, and small enough to enumerate. That combination lets us compare two ways of representing the same behavior.
 
-The complete project is available in the [fp-ts tennis repository](https://github.com/bmehder/2027-fp-ts-tennis).
-
 ## The problem is not mutation
 
 Suppose we represent a tennis game with two point counts. Scoring a point might mean incrementing one count, checking whether that player has at least four points, and checking whether the lead is at least two.
