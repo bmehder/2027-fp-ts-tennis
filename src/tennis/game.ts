@@ -117,4 +117,4 @@ export const scorePoint =
 		transitions[game][pointWinner]
 
 // Projection
-export const displayScore = (game: Game): GameScore => displayScores[game]
+export const toDisplayScore = (game: Game): GameScore => displayScores[game]

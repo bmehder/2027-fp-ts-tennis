@@ -2,11 +2,11 @@ import * as O from 'fp-ts/Option'
 import { map } from 'fp-ts/ReadonlyArray'
 import { pipe } from 'fp-ts/function'
 import { match } from 'ts-pattern'
-import { displayScore } from './tennis/game.js'
+import { toDisplayScore } from './tennis/game.js'
 import { initialMatch, scorePoint, type Match } from './tennis/match.js'
 import { type Player } from './tennis/player.js'
 import {
-	score as setScore,
+	toSetScore,
 	type Set,
 	type SetResult,
 	type SetScore,
@@ -60,15 +60,15 @@ const emptySetScoreView: SetScoreView = {
 	b: { games: '', tiebreakScore: O.none },
 }
 
-const setScoreView = (score: SetScore): SetScoreView => ({
+const toSetScoreView = (score: SetScore): SetScoreView => ({
 	a: { games: score.a.toString(), tiebreakScore: O.none },
 	b: { games: score.b.toString(), tiebreakScore: O.none },
 })
 
-const completedSetView = (result: SetResult): SetScoreView =>
+const toCompletedSetView = (result: SetResult): SetScoreView =>
 	match(result)
 		.returnType<SetScoreView>()
-		.with({ kind: 'decidedByGames' }, ({ score }) => setScoreView(score))
+		.with({ kind: 'decidedByGames' }, ({ score }) => toSetScoreView(score))
 		.with(
 			{ kind: 'decidedByTiebreak', score: { a: 7, b: 6 } },
 			({ tiebreakLoserScore }) => ({
@@ -91,35 +91,41 @@ const completedSetView = (result: SetResult): SetScoreView =>
 		)
 		.exhaustive()
 
-const currentSetView = (set: Set): SetScoreView =>
-	pipe(set, setScore, setScoreView)
+const toCurrentSetView = (set: Set): SetScoreView =>
+	pipe(set, toSetScore, toSetScoreView)
 
-const matchView = (tennisMatch: Match) =>
+const toMatchView = (tennisMatch: Match) =>
 	match(tennisMatch)
 		.with({ state: 'completed' }, ({ completedSets }) => ({
-			sets: map(completedSetView)(completedSets),
+			sets: map(toCompletedSetView)(completedSets),
 			points: { a: '', b: '' },
 			isMatchOver: true,
 		}))
 		.with(
-			{ state: 'inProgress', set: { state: 'tiebreak' } },
+			{ state: 'inProgress', set: { state: 'playingTiebreak' } },
 			({ completedSets, set }) => ({
-				sets: [...map(completedSetView)(completedSets), currentSetView(set)],
+				sets: [
+					...map(toCompletedSetView)(completedSets),
+					toCurrentSetView(set),
+				],
 				points: set.tiebreak.score,
 				isMatchOver: false,
 			}),
 		)
 		.with(
-			{ state: 'inProgress', set: { state: 'regularGame' } },
+			{ state: 'inProgress', set: { state: 'playingGame' } },
 			({ completedSets, set }) => ({
-				sets: [...map(completedSetView)(completedSets), currentSetView(set)],
-				points: displayScore(set.game),
+				sets: [
+					...map(toCompletedSetView)(completedSets),
+					toCurrentSetView(set),
+				],
+				points: toDisplayScore(set.game),
 				isMatchOver: false,
 			}),
 		)
 		.exhaustive()
 
-const view = derive(() => matchView(model.value))
+const view = derive(() => toMatchView(model.value))
 
 fx(() => {
 	elements.setScoresA.forEach((element, index) => {

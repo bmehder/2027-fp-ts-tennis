@@ -57,9 +57,9 @@ const transitions = {
 const completeSet = (
 	tennisMatch: InProgressMatch,
 	setWinner: Player,
-	result: SetResult,
+	setResult: SetResult,
 ): Match => {
-	const completedSets = [...tennisMatch.completedSets, result]
+	const completedSets = [...tennisMatch.completedSets, setResult]
 
 	return match(transitions[tennisMatch.score][setWinner])
 		.returnType<Match>()

@@ -1,9 +1,9 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
-	displayScore,
 	initialGame,
 	scorePoint,
+	toDisplayScore,
 	type GameResult,
 } from '../src/tennis/game.js'
 import { type Player } from '../src/tennis/player.js'
@@ -19,7 +19,7 @@ const play = (points: Player[]): GameResult =>
 
 test('starts at love all and enters play on the first point', () => {
 	assert.equal(initialGame, 'loveLove')
-	assert.deepEqual(displayScore(initialGame), { a: '0', b: '0' })
+	assert.deepEqual(toDisplayScore(initialGame), { a: '0', b: '0' })
 	assert.deepEqual(scorePoint('a')(initialGame), {
 		outcome: 'gameContinues',
 		game: 'fifteenLove',
@@ -30,7 +30,7 @@ test('moves through ordinary tennis scores', () => {
 	const result = play(['a', 'a', 'b'])
 
 	assert.ok(result.outcome === 'gameContinues')
-	assert.deepEqual(displayScore(result.game), { a: '30', b: '15' })
+	assert.deepEqual(toDisplayScore(result.game), { a: '30', b: '15' })
 })
 
 test('handles deuce and advantage', () => {
@@ -39,7 +39,7 @@ test('handles deuce and advantage', () => {
 
 	const advantage = scorePoint('a')(deuce.game)
 	assert.equal(deuce.game, 'deuce')
-	assert.deepEqual(displayScore(deuce.game), { a: '40', b: '40' })
+	assert.deepEqual(toDisplayScore(deuce.game), { a: '40', b: '40' })
 	assert.deepEqual(advantage, {
 		outcome: 'gameContinues',
 		game: 'advantageA',
