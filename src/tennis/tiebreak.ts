@@ -1,18 +1,14 @@
 import { opponent, type Player } from './player.js'
 
 // Types
-type TiebreakScore = Readonly<{
+export type Tiebreak = Readonly<{
 	a: number
 	b: number
 }>
 
-export type Tiebreak = Readonly<{
-	score: TiebreakScore
-}>
-
 export type TiebreakWin = Readonly<{
 	winner: Player
-	score: TiebreakScore
+	score: Tiebreak
 }>
 
 export type TiebreakResult =
@@ -21,7 +17,8 @@ export type TiebreakResult =
 
 // Initial state
 export const initialTiebreak: Tiebreak = {
-	score: { a: 0, b: 0 },
+	a: 0,
+	b: 0,
 }
 
 // State transition
@@ -29,8 +26,8 @@ export const scorePoint =
 	(pointWinner: Player) =>
 	(tiebreak: Tiebreak): TiebreakResult => {
 		const score = {
-			...tiebreak.score,
-			[pointWinner]: tiebreak.score[pointWinner] + 1,
+			...tiebreak,
+			[pointWinner]: tiebreak[pointWinner] + 1,
 		}
 
 		const isTiebreakWon =
@@ -39,5 +36,5 @@ export const scorePoint =
 
 		return isTiebreakWon
 			? { outcome: 'tiebreakWon', result: { winner: pointWinner, score } }
-			: { outcome: 'tiebreakContinues', tiebreak: { score } }
+			: { outcome: 'tiebreakContinues', tiebreak: score }
 	}

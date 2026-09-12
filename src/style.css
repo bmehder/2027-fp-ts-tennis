@@ -73,6 +73,12 @@ h1 {
 	background: #204b3c;
 }
 
+.server {
+	margin-left: 0.35em;
+	color: #e9ff77;
+	font-size: 0.75em;
+}
+
 .score-row sup {
 	margin-left: 0.12em;
 	font-size: 0.6em;

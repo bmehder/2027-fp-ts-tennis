@@ -3,7 +3,12 @@ import { map } from 'fp-ts/ReadonlyArray'
 import { pipe } from 'fp-ts/function'
 import { match } from 'ts-pattern'
 import { toDisplayScore } from './tennis/game.js'
-import { initialMatch, scorePoint, type Match } from './tennis/match.js'
+import {
+	currentServer,
+	initialMatch,
+	scorePoint,
+	type Match,
+} from './tennis/match.js'
 import { type Player } from './tennis/player.js'
 import {
 	toSetScore,
@@ -24,6 +29,8 @@ const elements = {
 	),
 	pointsA: document.querySelector<HTMLElement>('#points-a')!,
 	pointsB: document.querySelector<HTMLElement>('#points-b')!,
+	serverA: document.querySelector<HTMLElement>('[data-server-player="a"]')!,
+	serverB: document.querySelector<HTMLElement>('[data-server-player="b"]')!,
 	appState: document.querySelector<HTMLElement>('#app-state')!,
 	pointButtons: document.querySelectorAll<HTMLButtonElement>('[data-player]'),
 	resetButton: document.querySelector<HTMLButtonElement>('#reset')!,
@@ -99,6 +106,7 @@ const toMatchView = (tennisMatch: Match) =>
 		.with({ state: 'completed' }, ({ completedSets }) => ({
 			sets: map(toCompletedSetView)(completedSets),
 			points: { a: '', b: '' },
+			server: currentServer(tennisMatch),
 			isMatchOver: true,
 		}))
 		.with(
@@ -108,7 +116,8 @@ const toMatchView = (tennisMatch: Match) =>
 					...map(toCompletedSetView)(completedSets),
 					toCurrentSetView(set),
 				],
-				points: set.tiebreak.score,
+				points: set.tiebreak,
+				server: currentServer(tennisMatch),
 				isMatchOver: false,
 			}),
 		)
@@ -120,6 +129,7 @@ const toMatchView = (tennisMatch: Match) =>
 					toCurrentSetView(set),
 				],
 				points: toDisplayScore(set.game),
+				server: currentServer(tennisMatch),
 				isMatchOver: false,
 			}),
 		)
@@ -154,6 +164,14 @@ fx(() => {
 	})
 	elements.pointsA.textContent = view.value.points.a.toString()
 	elements.pointsB.textContent = view.value.points.b.toString()
+	elements.serverA.hidden = !pipe(
+		view.value.server,
+		O.exists(server => server === 'a'),
+	)
+	elements.serverB.hidden = !pipe(
+		view.value.server,
+		O.exists(server => server === 'b'),
+	)
 	elements.appState.textContent = JSON.stringify(model.value, null, 2)
 	elements.pointButtons.forEach(button => {
 		button.disabled = view.value.isMatchOver

@@ -209,14 +209,14 @@ A tennis tiebreak establishes that boundary clearly. It is won at seven points w
 Enumerating every tiebreak score would require an infinite table. The honest model therefore uses numbers and a small calculation:
 
 ```ts
-export type TiebreakScore = Readonly<{
+export type Tiebreak = Readonly<{
 	a: number
 	b: number
 }>
 
 const hasWon =
 	(pointWinner: Player) =>
-	(score: TiebreakScore): boolean =>
+	(score: Tiebreak): boolean =>
 		score[pointWinner] >= 7 &&
 		score[pointWinner] - score[opponent(pointWinner)] >= 2
 ```

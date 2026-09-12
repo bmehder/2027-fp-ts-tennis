@@ -34,7 +34,7 @@ Match ends
 → Match records the winner
 ```
 
-Nothing modifies the existing model. Each operation receives the current value and returns a new value representing what is true afterward.
+Nothing modifies the existing model. Each operation receives the current value and returns a new model representing what is true afterward.
 
 ## The domain model
 

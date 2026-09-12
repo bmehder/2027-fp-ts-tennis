@@ -1,10 +1,13 @@
+import * as O from 'fp-ts/Option'
 import { match } from 'ts-pattern'
-import { type Player } from './player.js'
+import { opponent, type Player } from './player.js'
 import {
 	initialSet,
 	scorePoint as scoreSetPoint,
+	toSetScore,
 	type Set,
 	type SetResult,
+	type SetScore,
 } from './set.js'
 
 // Types
@@ -32,6 +35,8 @@ type MatchTransition =
 type MatchTransitions = Readonly<
 	Record<MatchScore, Readonly<Record<Player, MatchTransition>>>
 >
+
+const firstServer: Player = 'a'
 
 // Match transitions after a completed set
 const transitions = {
@@ -92,6 +97,20 @@ const scoreInProgressMatch = (
 		}))
 		.exhaustive()
 
+const gamesPlayed = (score: SetScore): number => score.a + score.b
+
+const completedGames = (sets: readonly SetResult[]): number =>
+	sets.reduce((total, set) => total + gamesPlayed(set.score), 0)
+
+const alternateServer = (server: Player, changes: number): Player =>
+	changes % 2 === 0 ? server : opponent(server)
+
+const tiebreakServer = (
+	tiebreakFirstServer: Player,
+	pointsPlayed: number,
+): Player =>
+	alternateServer(tiebreakFirstServer, Math.floor((pointsPlayed + 1) / 2))
+
 // Initial state
 export const initialMatch: Match = {
 	state: 'inProgress',
@@ -111,3 +130,32 @@ export const scorePoint =
 				return tennisMatch
 		}
 	}
+
+// Query
+export const currentServer = (tennisMatch: Match): O.Option<Player> => {
+	switch (tennisMatch.state) {
+		case 'completed':
+			return O.none
+		case 'inProgress': {
+			const gamesBeforeCurrentGame =
+				completedGames(tennisMatch.completedSets) +
+				gamesPlayed(toSetScore(tennisMatch.set))
+			const regularGameServer = alternateServer(
+				firstServer,
+				gamesBeforeCurrentGame,
+			)
+
+			switch (tennisMatch.set.state) {
+				case 'playingGame':
+					return O.some(regularGameServer)
+				case 'playingTiebreak':
+					return O.some(
+						tiebreakServer(
+							regularGameServer,
+							tennisMatch.set.tiebreak.a + tennisMatch.set.tiebreak.b,
+						),
+					)
+			}
+		}
+	}
+}
