@@ -1,3 +1,4 @@
+import * as E from 'fp-ts/Either'
 import * as O from 'fp-ts/Option'
 import { map } from 'fp-ts/ReadonlyArray'
 import { pipe } from 'fp-ts/function'
@@ -16,6 +17,7 @@ import {
 	type SetResult,
 	type SetScore,
 } from './tennis/set.js'
+import { load, save } from './storage.js'
 import { explicit as track, fx, implicit as derive } from './slank.js'
 
 const elements = {
@@ -52,7 +54,19 @@ const update =
 			.with({ type: 'restart' }, () => initialMatch)
 			.exhaustive()
 
-const model = track(initialMatch)
+const matchStorageKey = 'fp-ts-tennis-match'
+
+const model = track(
+	pipe(
+		load<Match>(matchStorageKey),
+		E.getOrElse((): O.Option<Match> => O.none),
+		O.getOrElse(() => initialMatch),
+	),
+)
+
+fx(() => {
+	save(matchStorageKey, model.value)
+})
 
 // View
 type PlayerSetScoreView = Readonly<{
